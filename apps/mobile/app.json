@@ -17,10 +17,10 @@
     "android": {
       "package": "com.kaldirimskoru.app",
       "permissions": [
-        "CAMERA",
-        "READ_MEDIA_IMAGES",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "plugins": [
@@ -40,7 +40,14 @@
       ]
     ],
     "extra": {
-      "apiBase": "http://localhost:8080"
-    }
+      "apiBase": "http://localhost:8080",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "cc2a924f-b046-4f03-86c0-20e4911e4cc0"
+      }
+    },
+    "owner": "islamuulu"
   }
 }
