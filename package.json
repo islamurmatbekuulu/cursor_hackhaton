@@ -1,0 +1,21 @@
+{
+  "name": "kaldirim-skoru",
+  "version": "1.0.0-demo",
+  "private": true,
+  "description": "Kaldırım Skoru — Istanbul sidewalk / visual-pollution walkability scoring (hackathon).",
+  "license": "AGPL-3.0-only",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build:web": "npm run build --workspace=apps/web",
+    "build:shared": "npm run build --workspace=packages/shared-types",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

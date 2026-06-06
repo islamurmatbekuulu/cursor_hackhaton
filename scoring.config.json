@@ -1,0 +1,21 @@
+{
+  "$comment": "Kaldırım Skoru transparent scoring config (PLAYBOOK 4.3). Weights and caps are editable WITHOUT a code change; the Go API loads this file at startup. ContributionPerClass = weight * min(count/P, cap) * avgConfidence; Score = max(0, 100 - sum). Class keys are the canonical merged allowlist enforced at the sidecar boundary.",
+  "classes": {
+    "pothole":           { "weight": 8, "cap": 5,  "_note": "Direct trip/fall hazard" },
+    "culture_sidewalk":  { "weight": 7, "cap": 8,  "_note": "Clutter blocking the kaldırım — core problem" },
+    "construction_road": { "weight": 7, "cap": 5,  "_note": "Construction debris blocks pedestrian path" },
+    "garbage":           { "weight": 5, "cap": 10, "_note": "Aesthetic + health, scales by count" },
+    "broken_signage":    { "weight": 4, "cap": 4,  "_note": "Wayfinding hazard" },
+    "graffiti":          { "weight": 3, "cap": 6,  "_note": "Aesthetic" },
+    "faded_signage":     { "weight": 3, "cap": 4,  "_note": "Wayfinding minor" },
+    "unkempt_facade":    { "weight": 2, "cap": 4,  "_note": "Aesthetic" }
+  },
+  "grades": [
+    { "min": 85, "grade": "A" },
+    { "min": 70, "grade": "B" },
+    { "min": 55, "grade": "C" },
+    { "min": 40, "grade": "D" },
+    { "min": 25, "grade": "E" },
+    { "min": 0,  "grade": "F" }
+  ]
+}
