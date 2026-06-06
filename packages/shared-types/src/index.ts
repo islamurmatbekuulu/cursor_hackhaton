@@ -62,11 +62,30 @@ export const ClassCount = z.object({
 });
 export type ClassCount = z.infer<typeof ClassCount>;
 
-/** POST /api/v1/score request body. */
-export const ScoreRequest = z.object({
-  street: z.string().min(2).max(200),
-  max_points: z.number().int().min(1).max(100).optional(),
-});
+/**
+ * POST /api/v1/score request body.
+ *
+ * Coordinate path: when the client already has a coordinate (e.g. from Google
+ * Places Autocomplete) it may send `lat` + `lng` and the backend SKIPS
+ * geocoding, using them as the snapToRoads seed. Otherwise `street` is geocoded.
+ * `street` is therefore required ONLY when `lat`/`lng` are absent — enforced via
+ * a refinement so the error is explicit. `place_id` is accepted for
+ * logging/diagnostics only.
+ *
+ * Wire keys are snake_case (`place_id`) to match the Go DTO exactly.
+ */
+export const ScoreRequest = z
+  .object({
+    street: z.string().min(2).max(200).optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+    place_id: z.string().max(256).optional(),
+    max_points: z.number().int().min(1).max(100).optional(),
+  })
+  .refine(
+    (v) => (typeof v.lat === "number" && typeof v.lng === "number") || (v.street?.trim().length ?? 0) >= 2,
+    { message: "either 'street' or both 'lat' and 'lng' are required" },
+  );
 export type ScoreRequest = z.infer<typeof ScoreRequest>;
 
 /** The full scoring response returned by the Go API (model.StreetScore). */
@@ -82,6 +101,59 @@ export const ScoreResponse = z.object({
   limitations: z.array(z.string()).optional(),
 });
 export type ScoreResponse = z.infer<typeof ScoreResponse>;
+
+/**
+ * Multipart fields for POST /api/v1/score/photo (documented contract; not JSON).
+ * Wire keys are snake_case to match the Go handler.
+ */
+export const ScorePhotoRequest = z.object({
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  accuracy: z.number().min(0).optional(),
+});
+export type ScorePhotoRequest = z.infer<typeof ScorePhotoRequest>;
+
+/** POST /api/v1/score/photo response — score payload plus persistence metadata. */
+export const ScorePhotoResponse = ScoreResponse.extend({
+  submission_id: z.string().uuid().optional(),
+  persisted: z.boolean(),
+  street_label: z.string().optional(),
+});
+export type ScorePhotoResponse = z.infer<typeof ScorePhotoResponse>;
+
+/** A persisted mobile camera submission (list view; no image bytes). */
+export const Submission = z.object({
+  id: z.string().uuid(),
+  submitted_on: z.string(),
+  lat: z.number(),
+  lng: z.number(),
+  accuracy_m: z.number().optional(),
+  street_label: z.string(),
+  street_label_key: z.string(),
+  score: z.number(),
+  grade: Grade,
+  pollution_raw: z.number(),
+  counts: z.array(ClassCount),
+  source: z.literal("camera"),
+});
+export type Submission = z.infer<typeof Submission>;
+
+/** Average score grouped by street for map overlays. */
+export const StreetAggregate = z.object({
+  street_label_key: z.string(),
+  street_label: z.string(),
+  avg_score: z.number(),
+  grade: Grade,
+  count: z.number().int(),
+});
+export type StreetAggregate = z.infer<typeof StreetAggregate>;
+
+/** GET /api/v1/submissions response. */
+export const SubmissionMapResponse = z.object({
+  submissions: z.array(Submission),
+  street_aggregates: z.array(StreetAggregate),
+});
+export type SubmissionMapResponse = z.infer<typeof SubmissionMapResponse>;
 
 /** Human-readable Turkish labels for each class (UI chips). */
 export const CLASS_LABELS_TR: Record<string, string> = {
