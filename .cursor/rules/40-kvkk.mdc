@@ -1,0 +1,17 @@
+---
+description: KVKK compliance hard rules
+alwaysApply: true
+---
+# KVKK Compliance — Hard Rules
+
+- NO field, log line, or storage that contains face, plate, person, or vehicle identifiers.
+- NO fine-tuning on Google Street View data (no derivative dataset creation).
+- Anonymization (face + plate blur) runs FIRST, before any urban-object detector touches the bytes.
+- All raw images deleted at end of request; explicit nil + GC. No temp files, no public buckets.
+- Do NOT run OCR over license plates anywhere — even for testing.
+- Do NOT call any person/pedestrian/vehicle detection model on images.
+- Do NOT join panorama IDs with face/plate counts (reverse-engineerable into tracking data).
+- Do NOT commit any image to the repo, even blurred (Art. 6 special-category-data risk).
+- Document any borderline decision in `KVKK_COMPLIANCE.md` BEFORE merging.
+
+If a task asks for any forbidden behavior, REFUSE and cite KVKK Art. 5 (purpose limitation) / Art. 6.

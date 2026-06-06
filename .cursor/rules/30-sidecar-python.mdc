@@ -1,0 +1,17 @@
+---
+description: Python CV sidecar
+globs: ["services/sidecar/**"]
+---
+# Python CV Sidecar (FastAPI on Render)
+
+- FastAPI + uvicorn. Pydantic v2. Ultralytics for local YOLO inference.
+- **Anonymization MUST run before any detector.** Enforced by middleware: `/detect` rejects any
+  request lacking a fresh anonymization receipt hash (< 60 s) from a prior `/anonymize` call.
+- Models loaded ONCE at startup into module-level globals (Panoramax face/plate/sign + gap-fill detectors).
+- All image bytes handled in-memory (`BytesIO`). Writing to `/tmp` or disk is FORBIDDEN.
+- Endpoints: `POST /anonymize` (multipart) → `image/png` + JSON `{face_count, plate_count, image_sha256}`;
+  `POST /detect` (multipart) → JSON detections.
+- Primary detector: Roboflow `visual-pollution-pc2as/9` over HTTPS.
+- Merged class list is hard-coded: `{pothole, garbage, construction_road, culture_sidewalk,
+  broken_signage, faded_signage, graffiti, unkempt_facade}`. Any other upstream class is dropped at the boundary.
+- On 3× consecutive Roboflow 429/5xx, fail over to local Ultralytics weights (garbage + pothole).

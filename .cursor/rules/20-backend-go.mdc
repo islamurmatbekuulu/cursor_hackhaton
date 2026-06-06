@@ -1,0 +1,17 @@
+---
+description: Go backend conventions
+globs: ["services/api/**"]
+---
+# Go Backend (chi on Render)
+
+- `chi` router + `zerolog`. NO ORM (use `database/sql` only if persistence is added).
+- Every handler returns RFC 7807 `application/problem+json` on error.
+- Outbound HTTP via a single retryable client (3 retries, exponential backoff, sane timeouts).
+- Roboflow + sidecar tokens read from env at startup; FAIL FAST if missing.
+- Street View Static URLs MUST be HMAC-SHA1 signed when called from this service.
+- Go is the system of record / API gateway / scoring engine. The Python sidecar is an internal
+  microservice called via service-to-service HTTPS with `INTERNAL_SIDECAR_TOKEN`.
+- Raw image bytes: `bytes.NewReader` + `http.NewRequest`, `defer req.Body.Close()`. No temp files.
+  No log statement ever takes raw image bytes as an argument.
+- Resize images > 5 MB to ≤ 1280×1280 before sending to Roboflow (5 MB ingest cap).
+- Scoring lives in `scoring.go`, driven by `scoring.config.json` (weights + caps editable without code changes).

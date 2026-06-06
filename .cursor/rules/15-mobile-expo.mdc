@@ -1,0 +1,23 @@
+---
+description: Expo mobile conventions + required native skills
+globs: ["apps/mobile/**"]
+---
+# Mobile App (Expo / React Native)
+
+## REQUIRED skills (read & follow before building any mobile UI)
+When designing, building, refactoring, or reviewing ANY code in `apps/mobile/**`, you MUST
+read and follow these skills first:
+- `building-native-ui` — Expo Router structure, native controls, headers/tabs, styling, animations.
+- `vercel-react-native-skills` — RN/Expo performance: list virtualization, memoization, GPU-only
+  animations, expo-image, native navigation.
+
+Treat them as mandatory pre-work, not optional references.
+
+## Conventions
+- Expo SDK 51 + `expo-router`. Functional components, no default-export components.
+- Use `expo-image` (with `sf:` SF Symbols where appropriate), NOT `img` or `@expo/vector-icons`.
+- Capture flow uses `expo-image-picker`; POST multipart to Go `/score/photo`.
+- Render the SAME result component shape as web via shared types in `packages/shared-types`.
+- `ScrollView`/`FlatList` with `contentInsetAdjustmentBehavior="automatic"`; respect safe areas.
+- Animate only `transform` / `opacity`. Memoize list items. Use FlashList for large lists.
+- Never use removed RN modules (Picker, WebView, SafeAreaView, AsyncStorage); use `process.env.EXPO_OS` not `Platform.OS`.

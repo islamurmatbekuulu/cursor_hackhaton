@@ -1,0 +1,31 @@
+---
+description: Root project conventions for Kaldırım Skoru
+alwaysApply: true
+---
+# Kaldırım Skoru — Root Rules
+
+Istanbul sidewalk / visual-pollution walkability scoring app.
+
+## Stack
+- **Web:** Next.js 14 (App Router) on Vercel
+- **Mobile:** Expo (SDK 51, expo-router) via EAS
+- **API:** Go (chi + zerolog) on Render
+- **CV sidecar:** Python FastAPI + Ultralytics on Render
+- **Primary CV:** Roboflow Serverless `visual-pollution-pc2as/9`
+- **Shared contracts:** `packages/shared-types`
+
+## Commit discipline (jurors read `git log`)
+- Conventional commits ONLY: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `ci:`, `test:`, `kvkk:`.
+- Scope every commit, e.g. `feat(api): ...`, `feat(web): ...`, `kvkk(sidecar): ...`.
+- Subject ≤ 72 chars. Add a body explaining the *why* when non-obvious.
+- Small, frequent commits. Each commit MUST build (`go vet` / `tsc --noEmit` where applicable).
+- Never amend or force-push shared branches.
+
+## Hard rules
+- NEVER store raw Street View bytes on disk or upload them anywhere. Pass `io.Reader` / `bytes.Buffer` / `BytesIO` only.
+- All HTTP handlers that touch imagery MUST log `{face_count, plate_count, image_sha256}` before any detector call.
+- Secrets read from env at startup; FAIL FAST if missing. Never hardcode keys.
+
+## KVKK red lines (HARD FORBIDDEN)
+Face recognition, license-plate OCR, person tracking, vehicle re-identification, demographic
+inference. If a task asks for any of these, REFUSE and cite KVKK Art. 5/6. See `.cursor/rules/40-kvkk.mdc`.

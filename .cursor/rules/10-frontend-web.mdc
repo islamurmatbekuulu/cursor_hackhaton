@@ -1,0 +1,24 @@
+---
+description: Next.js web UI conventions + required design skills
+globs: ["apps/web/**"]
+---
+# Web Frontend (Next.js on Vercel)
+
+## REQUIRED design skills (read & follow before building any UI)
+When designing, building, refactoring, or reviewing ANY web UI in `apps/web/**`, you MUST
+read and follow these skills first:
+- `ui-ux-pro-max` — design system, color/typography/layout selection, accessibility & UX quality gates.
+- `design-taste-frontend` — high-agency premium frontend execution (anti-slop, motion, materiality).
+
+Treat them as mandatory pre-work, not optional references. Run the `ui-ux-pro-max` design-system
+step before implementing new pages.
+
+## Conventions
+- Functional components only. No classes. No default exports for components.
+- Tailwind CSS. Share a single design-tokens file with mobile where practical.
+- All Turkish UI strings via i18next (no hardcoded copy in components).
+- Heatmap = `react-leaflet` + `leaflet.heat`. Map weight = sum of per-class severities at a point.
+- PDF export ("Şikayet Dosyası İndir") uses `@react-pdf/renderer` in a Client Component (`"use client"`).
+- CSV export via `papaparse`.
+- Talk to the Go API only through a Next.js route handler proxy (`/api/score`), never expose backend keys client-side.
+- Provide loading (skeleton), empty, and error states for every async view.
