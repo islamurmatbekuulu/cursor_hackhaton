@@ -1,14 +1,12 @@
-import type { ScoreResponse } from "@kaldirim/shared-types";
+import type { ScorePhotoResponse } from "@kaldirim/shared-types";
 
-// Tiny in-memory holder to pass the score from the capture screen to the result
-// screen without serializing a large object through navigation params.
-let current: ScoreResponse | null = null;
+let current: ScorePhotoResponse | null = null;
 
 export const resultStore = {
-  set(result: ScoreResponse) {
+  set(result: ScorePhotoResponse) {
     current = result;
   },
-  get(): ScoreResponse | null {
+  get(): ScorePhotoResponse | null {
     return current;
   },
 };

@@ -2,17 +2,21 @@ import { useState } from "react";
 import { ScrollView, View, Text, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { scorePhoto } from "@/lib/api";
+import { scorePhoto, type PhotoCoords } from "@/lib/api";
 import { resultStore } from "@/lib/result-store";
 
-// Capture screen (default export required by expo-router).
+type CaptureSource = "camera" | "gallery" | null;
+
 export default function CaptureScreen() {
   const router = useRouter();
   const [uri, setUri] = useState<string | null>(null);
+  const [source, setSource] = useState<CaptureSource>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locationWarning, setLocationWarning] = useState<string | null>(null);
 
   async function pickFromCamera() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -21,7 +25,12 @@ export default function CaptureScreen() {
       return;
     }
     const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!res.canceled) setUri(res.assets[0].uri);
+    if (!res.canceled) {
+      setUri(res.assets[0].uri);
+      setSource("camera");
+      setLocationWarning(null);
+      setError(null);
+    }
   }
 
   async function pickFromLibrary() {
@@ -29,7 +38,42 @@ export default function CaptureScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
     });
-    if (!res.canceled) setUri(res.assets[0].uri);
+    if (!res.canceled) {
+      setUri(res.assets[0].uri);
+      setSource("gallery");
+      setLocationWarning("Galeri fotoğraflarında konum gönderilmez; skor hesaplanır ancak haritaya eklenmez.");
+      setError(null);
+    }
+  }
+
+  async function resolveCoords(): Promise<PhotoCoords | undefined> {
+    if (source !== "camera") {
+      return undefined;
+    }
+
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      setLocationWarning(
+        "Konum izni verilmedi; skor hesaplanır ancak belediye haritasına eklenmez.",
+      );
+      return undefined;
+    }
+
+    try {
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      return {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy ?? undefined,
+      };
+    } catch {
+      setLocationWarning(
+        "Konum alınamadı; skor hesaplanır ancak belediye haritasına eklenmez.",
+      );
+      return undefined;
+    }
   }
 
   async function submit() {
@@ -40,7 +84,8 @@ export default function CaptureScreen() {
       if (process.env.EXPO_OS === "ios") {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      const result = await scorePhoto(uri);
+      const coords = await resolveCoords();
+      const result = await scorePhoto(uri, coords);
       resultStore.set(result);
       router.push("/result");
     } catch (e) {
@@ -58,6 +103,7 @@ export default function CaptureScreen() {
       <Text style={{ fontSize: 15, color: "#475569", lineHeight: 22 }}>
         Bir kaldırım fotoğrafı çekin veya seçin. Yüz ve plakalar analiz öncesinde
         sunucuda geri dönülemez biçimde bulanıklaştırılır; ham görüntü saklanmaz.
+        Kamera ile çekimde anonim konum haritaya eklenir.
       </Text>
 
       <View style={{ flexDirection: "row", gap: 12 }}>
@@ -88,6 +134,12 @@ export default function CaptureScreen() {
           <Text style={{ color: "#94a3b8" }}>Henüz fotoğraf seçilmedi</Text>
         </View>
       )}
+
+      {locationWarning ? (
+        <Text selectable style={{ color: "#b45309", fontSize: 13, lineHeight: 20 }}>
+          {locationWarning}
+        </Text>
+      ) : null}
 
       {error ? (
         <Text selectable style={{ color: "#b91c1c", fontSize: 14 }}>

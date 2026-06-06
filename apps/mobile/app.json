@@ -11,11 +11,17 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Kaldırım fotoğrafı çekmek için kameraya erişim gerekir.",
-        "NSPhotoLibraryUsageDescription": "Kaldırım fotoğrafı seçmek için galeriye erişim gerekir."
+        "NSPhotoLibraryUsageDescription": "Kaldırım fotoğrafı seçmek için galeriye erişim gerekir.",
+        "NSLocationWhenInUseUsageDescription": "Çektiğiniz fotoğrafı anonim olarak haritada konumlandırmak için konum kullanılır; kimlik bilgisi saklanmaz."
       }
     },
     "android": {
-      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -24,6 +30,12 @@
         {
           "photosPermission": "Kaldırım fotoğrafı seçmek için galeriye erişim gerekir.",
           "cameraPermission": "Kaldırım fotoğrafı çekmek için kameraya erişim gerekir."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Çektiğiniz fotoğrafı anonim olarak haritada konumlandırmak için konum kullanılır; kimlik bilgisi saklanmaz."
         }
       ]
     ],
