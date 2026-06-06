@@ -14,7 +14,7 @@ kimliklendirme veya demografik çıkarım **yapılmaz**.
 
 | Kural | Nerede zorlanıyor |
 |---|---|
-| Kullanıcı yüklemeleri tespitten ÖNCE anonimleştirilir | Sidecar makbuz kapısı; `/detect`, kullanıcı fotoğrafları için taze (<60 sn) bir anonimleştirme makbuzu (sha256) olmadan **412** ile reddeder. Go `ScorePhotoUseCase` → `Detector.AnonymizeAndDetect` önce `/anonymize`, sonra `/detect` çağırır. Street View yolu **muaftır** (Google kaynakta bulanıklaştırır) — bkz. §5. |
+| Kullanıcı yüklemeleri puanlamadan ÖNCE anonimleştirilir | Go `ScorePhotoUseCase` önce `Anonymizer.Anonymize` (sidecar `/anonymize`) çağırır; **yalnızca** dönen bulanık PNG, puanlama için Claude görsel modeline gönderilir (bkz. §5.4). Ham baytlar `in.Image = nil` ile hemen serbest bırakılır. Makbuz `{face_count, plate_count, image_sha256}` Claude çağrısından **önce** loglanır. (Eski Roboflow `/detect` artık fotoğraf yolunda **çağrılmaz**; Street View yolu hâlâ `DetectPreBlurred` kullanır — bkz. §5.1.) |
 | Sınıf izin listesi (allowlist) | `model.AllowedClasses()` (Go) + sidecar sınıf filtresi. Listede olmayan her sınıf sınırda düşürülür. |
 | Ham görüntü kalıcılaştırılmaz | Go `bytes.Reader`/`multipart` ile yalnızca bellek; `img.Image = nil` ile çağrı sonrası serbest bırakılır. Sidecar `BytesIO`. Disk/`/tmp` yazımı yok. |
 | Kimlik verisi loglanmaz | Log yalnızca `{face_count, plate_count, image_sha256}` içerir — ham bayt veya kimlik asla. |
@@ -107,6 +107,81 @@ görüntü dosyası commit edilmez.
 
 **Erişim / Access.** `GET /api/v1/submissions/{id}/image` yalnızca bulanık PNG
 döndürür; `Cache-Control: private`. Liste uçları görüntü baytı içermez.
+
+### 5.4 LLM görsel puanlama — Anthropic Claude'a bulanık görüntü gönderimi / LLM visual scoring with Anthropic Claude
+**Karar (2026-06):** Fotoğraf puanlama yolunda Roboflow nesne-tespit modeli
+**aktif yoldan kaldırıldı**. Anonimleştirme (yüz + plaka bulanıklaştırma) adımı
+**korunuyor**; ardından yalnızca **bulanıklaştırılmış PNG**, kaldırım /
+görsel-kirlilik puanı (0–100), A–F notu, kirlilik kategorileri ve kısa Türkçe bir
+rapor üretmesi için Anthropic Claude görsel (vision) modeline gönderilir. Sonuç
+mobil uygulamaya döner ve belediye konsolu için gönderim olarak kalıcılaştırılır.
+
+**Decision (EN).** On the photo path the Roboflow object detector is removed from
+the active flow. The face/plate anonymization step is KEPT; only the BLURRED PNG
+is then sent to Anthropic's Claude vision model, which returns a 0–100
+walkability/visual-pollution score, an A–F grade, pollution categories, and a
+short Turkish report. The result is returned to the mobile app and persisted for
+the municipality console.
+
+**Gerekçe / Rationale.** Demo için, sahaya özgü eğitilmiş bir detektörden çok,
+genel amaçlı bir görsel-dil modelinin kaldırım durumunu insanlarca okunabilir
+şekilde değerlendirmesi (skor + Türkçe açıklama) daha esnek ve gösterime uygundur.
+Tespit yerine **bütünsel sahne değerlendirmesi** yapılır; çıktı yine yalnızca
+kentsel-kirlilik sınıflarına indirgenir (allowlist).
+
+**Anonimleştirme önce çalışır / Faces & plates blurred FIRST.** Sıralama
+değişmedi: `ScorePhotoUseCase`, Claude'dan **önce** `Anonymizer.Anonymize`
+çağırır. Claude'a giden baytlar sidecar `/anonymize` çıktısıdır (yüz/plaka
+bulanık). Ham yükleme baytları Claude'a (veya başka herhangi bir yere) **asla**
+gönderilmez; anonimleştirmeden hemen sonra `nil` yapılıp GC'ye bırakılır.
+
+**Claude'a verilen talimat / What Claude is instructed to do.** Sistem komutu
+(prompt) modele **açıkça** şunu söyler: yalnızca kaldırım/kentsel görsel-kirlilik
+koşullarını (çöp, bozuk/işgal edilmiş kaldırım, inşaat molozu, grafiti,
+solmuş/bozuk tabela, bakımsız cephe) değerlendir; **kişileri tanımlama/tarif
+etme/sayma**, **plaka veya kimliklendirici metin okuma/yazma (OCR yok)**, **yüz
+tanıma**, **kişi/araç takibi yapma**. Yanıt yalnızca
+`{score, grade, categories[], report_tr}` JSON'udur. Kod tarafında **yalnızca**
+bu alanlar okunur; kategoriler allowlist'e göre filtrelenir; modelin döndürebileceği
+başka herhangi bir (kimliklendirici olabilecek) içerik **yok sayılır / atılır**.
+Tam prompt metni `services/api/internal/infrastructure/llm/claude/client.go`
+içindedir.
+
+**Ham görüntü saklanmaz/gönderilmez / No raw storage or transfer.** §5.3'teki gibi,
+kalıcılaştırılan tek görüntü temsili `submissions.image_blurred` (bulanık PNG)
+olmaya devam eder. Claude'a yalnızca bu bulanık baytlar gider; yanıttan üretilen
+`score/grade/report` kalıcılaştırılır.
+
+**Loglama / Logging.** Claude istemcisi yalnızca `{model, image_sha256, score,
+grade, kategori_sayısı, token kullanımı}` loglar. API anahtarı **asla**, rapor
+metni **asla**, hiçbir kimlik bilgisi **asla** loglanmaz. Anahtar ortam
+değişkeninden (env) okunur, yoksa servis başlamaz (fail-fast); istemci paketine
+veya yanıtlara sızdırılmaz.
+
+**Kalan risk (kabul edildi) / Residual risk (accepted).**
+- **Üçüncü taraf / yurt dışı aktarım:** Bulanık görüntü, üçüncü taraf bir işleyiciye
+  (Anthropic, ABD) HTTPS üzerinden iletilir. Görüntü, kişiler bakımından kaynakta
+  anonimleştirilmiştir (yüz/plaka bulanık), ancak yine de dış bir servise aktarım
+  söz konusudur. Bu, hackathon demosu kapsamında **kabul edilen bir karardır**;
+  üretimde KVKK Madde 9 (yurt dışına aktarım) için açık rıza / yeterlilik kararı /
+  veri işleme sözleşmesi gerekir.
+- **Bulanıklaştırma kusuru:** §5.1'deki gibi, yerel YOLO/Haar bulanıklaştırması
+  %100 değildir; nadiren kaçırılan bir yüz/plaka Claude'a ulaşabilir. Sistem bu
+  durumda dahi kimlik çıkarımı **istemez**; model açıkça kimliklendirmemeye
+  yönlendirilir ve yalnızca skor/kategori/rapor saklanır.
+- **Serbest-metin rapor:** `report_tr` modelden gelen serbest metindir; talimata
+  rağmen teorik olarak kimliklendirici ifade içerebilir. Azaltım: güçlü sistem
+  komutu + yalnızca kentsel-kirlilik odaklı çıktı; raporun loglanmaması; gerekirse
+  belediye konsolunda insan denetimi. Kaçırılan bir yüz/plaka **hiçbir** kimlik
+  çıkarımına, OCR'a, tanımaya veya pano/araç eşleştirmesine tabi tutulmaz.
+
+**Decision (EN, summary).** Blurred imagery is sent to Anthropic Claude purely to
+score sidewalk visual pollution. Faces/plates are blurred first; raw bytes are
+never sent or stored; Claude is explicitly instructed not to identify people,
+read plates, perform OCR, face recognition, or person/vehicle tracking; only
+score/grade/categories/report are kept and any identifying content is discarded.
+Residual risks (third-party/cross-border transfer of blurred images, imperfect
+blur, free-text report) are acknowledged and accepted for the demo.
 
 ## 6. Veri Silme
 Bkz. [`DATA_DELETION.md`](./DATA_DELETION.md). Etkinlik sonunda tüm hizmetler,
