@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -74,10 +76,16 @@ type DatabaseConfig struct {
 
 // DSN returns the PostgreSQL connection string.
 func (d DatabaseConfig) DSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		d.User, d.Password, d.Host, d.Port, d.DBName, d.SSLMode,
-	)
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(d.User, d.Password),
+		Host:   net.JoinHostPort(d.Host, strconv.Itoa(d.Port)),
+		Path:   d.DBName,
+	}
+	q := u.Query()
+	q.Set("sslmode", d.SSLMode)
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 // RedisConfig holds Redis connection settings.
@@ -120,7 +128,7 @@ func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
 			Host:         envOrDefault("SERVER_HOST", "0.0.0.0"),
-			Port:         envOrDefaultInt("SERVER_PORT", 8080),
+			Port:         envOrDefaultInt("SERVER_PORT", envOrDefaultInt("PORT", 8080)),
 			ReadTimeout:  time.Duration(envOrDefaultInt("SERVER_READ_TIMEOUT_SECONDS", 15)) * time.Second,
 			WriteTimeout: time.Duration(envOrDefaultInt("SERVER_WRITE_TIMEOUT_SECONDS", 15)) * time.Second,
 			IdleTimeout:  time.Duration(envOrDefaultInt("SERVER_IDLE_TIMEOUT_SECONDS", 60)) * time.Second,

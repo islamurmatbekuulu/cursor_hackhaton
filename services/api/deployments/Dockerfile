@@ -7,6 +7,7 @@ WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
 
 COPY . .
 
@@ -20,6 +21,7 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /bin/masterfabric /app/masterfabric
+COPY --from=builder /go/bin/goose /app/goose
 COPY --from=builder /app/internal/infrastructure/postgres/migrations /app/migrations
 
 EXPOSE 8080

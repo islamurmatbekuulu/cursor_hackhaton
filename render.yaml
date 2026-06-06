@@ -1,0 +1,97 @@
+databases:
+  - name: kaldirim-submissions-db
+    databaseName: kaldirim
+    user: kaldirim
+    plan: free
+
+services:
+  - type: web
+    name: kaldirim-sidecar
+    runtime: docker
+    plan: free
+    rootDir: services/sidecar
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: INTERNAL_SIDECAR_TOKEN
+        sync: false
+      - key: ROBOFLOW_API_KEY
+        sync: false
+      - key: ROBOFLOW_MODEL
+        value: visual-pollution-pc2as/9
+      - key: ROBOFLOW_CONFIDENCE
+        value: "0.4"
+      - key: ROBOFLOW_OVERLAP
+        value: "0.5"
+      - key: ANON_MODEL_PATH
+        value: /var/data/panoramax/model.pt
+      - key: ANON_MODEL_URL
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+    disk:
+      name: sidecar-models
+      mountPath: /var/data
+      sizeGB: 1
+
+  - type: web
+    name: kaldirim-api
+    runtime: docker
+    plan: free
+    rootDir: services/api
+    dockerfilePath: ./deployments/Dockerfile
+    healthCheckPath: /health/live
+    preDeployCommand: /app/goose -dir /app/migrations postgres "$DB_DSN" up
+    envVars:
+      - key: SERVER_HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: kaldirim-submissions-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: kaldirim-submissions-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: kaldirim-submissions-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: kaldirim-submissions-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: kaldirim-submissions-db
+          property: database
+      - key: DB_DSN
+        fromDatabase:
+          name: kaldirim-submissions-db
+          property: connectionString
+      - key: DB_SSLMODE
+        value: require
+      - key: KAFKA_ENABLED
+        value: "false"
+      - key: LOG_LEVEL
+        value: info
+      - key: LOG_FORMAT
+        value: json
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: GOOGLE_MAPS_BACKEND_KEY
+        sync: false
+      - key: GOOGLE_MAPS_SIGNING_SECRET
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
+      - key: CLAUDE_MODEL
+        sync: false
+      - key: SIDECAR_URL
+        value: https://kaldirim-sidecar.onrender.com
+      - key: INTERNAL_SIDECAR_TOKEN
+        sync: false
+      - key: SCORING_CONFIG_PATH
+        value: scoring.config.json
+      - key: JWT_SECRET
+        generateValue: true

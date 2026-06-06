@@ -32,16 +32,24 @@ func TestLoad_EnvironmentOverrides(t *testing.T) {
 	assert.Equal(t, "db.example.com", cfg.Database.Host)
 }
 
+func TestLoad_RenderPortFallback(t *testing.T) {
+	os.Setenv("PORT", "10000")
+	defer os.Unsetenv("PORT")
+
+	cfg := Load()
+	assert.Equal(t, 10000, cfg.Server.Port)
+}
+
 func TestDatabaseConfig_DSN(t *testing.T) {
 	cfg := DatabaseConfig{
 		Host:     "localhost",
 		Port:     5432,
 		User:     "user",
-		Password: "pass",
+		Password: "p@ss:/word",
 		DBName:   "testdb",
 		SSLMode:  "disable",
 	}
-	expected := "postgres://user:pass@localhost:5432/testdb?sslmode=disable"
+	expected := "postgres://user:p%40ss%3A%2Fword@localhost:5432/testdb?sslmode=disable"
 	assert.Equal(t, expected, cfg.DSN())
 }
 
