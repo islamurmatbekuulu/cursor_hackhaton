@@ -1,0 +1,65 @@
+# === Secrets / env ===
+.env
+.env.*
+!.env.example
+
+# === KVKK: never commit imagery (raw OR blurred) ===
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.heic
+raw_images/
+blurred_images/
+!apps/web/public/**/*.png
+!apps/web/public/**/*.svg
+!apps/mobile/assets/**/*.png
+!docs/**/*.png
+
+# === Node / Next.js / Expo ===
+node_modules/
+.next/
+out/
+dist/
+build/
+.expo/
+.expo-shared/
+*.tsbuildinfo
+.turbo/
+.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm-cache/
+
+# === Go ===
+services/api/bin/
+services/api/tmp/
+*.exe
+*.test
+*.out
+vendor/
+
+# === Python sidecar ===
+services/sidecar/.venv/
+services/sidecar/venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+sidecar/weights/
+services/sidecar/weights/
+*.pt
+*.onnx
+*.jit
+
+# === Cursor CLI review artifact (regenerated per commit) ===
+.cursor-review.log
+
+# === OS / editor ===
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
