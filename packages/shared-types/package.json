@@ -1,0 +1,22 @@
+{
+  "name": "@kaldirim/shared-types",
+  "version": "1.0.0",
+  "description": "Shared ScoreRequest/ScoreResponse/Detection/Grade contracts (TS + zod) mirroring the Go walkability domain.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
