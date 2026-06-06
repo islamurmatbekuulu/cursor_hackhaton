@@ -30,21 +30,51 @@ export async function scorePhoto(uri: string, coords?: PhotoCoords): Promise<Sco
     }
   }
 
-  const res = await fetch(`${API_BASE}/api/v1/score/photo`, {
-    method: "POST",
-    body: form,
-    headers: { Accept: "application/json" },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/v1/score/photo`, {
+      method: "POST",
+      body: form,
+      headers: { Accept: "application/json" },
+    });
+  } catch (e) {
+    // Network-level failure (server unreachable / wrong API_BASE / no LAN route).
+    const detail = e instanceof Error ? e.message : String(e);
+    throw new Error(`Sunucuya ulaşılamadı (${API_BASE}): ${detail}`);
+  }
 
-  const body = await res.json().catch(() => null);
+  // Read the raw text first so non-JSON bodies (proxy/HTML errors) are reportable
+  // instead of collapsing to a generic, undiagnosable failure.
+  const rawText = await res.text().catch(() => "");
+  let body: unknown = null;
+  if (rawText) {
+    try {
+      body = JSON.parse(rawText);
+    } catch {
+      body = null;
+    }
+  }
+
   if (!res.ok) {
-    const msg = body && typeof body.error === "string" ? body.error : `Sunucu hatası (${res.status})`;
-    throw new Error(msg);
+    const obj = body as { error?: unknown; message?: unknown } | null;
+    const serverMsg =
+      obj && typeof obj.message === "string" && obj.message
+        ? obj.message
+        : obj && typeof obj.error === "string"
+          ? obj.error
+          : rawText.slice(0, 200);
+    throw new Error(`Sunucu hatası (${res.status})${serverMsg ? `: ${serverMsg}` : ""}`);
   }
 
   const parsed = ScorePhotoResponse.safeParse(body);
   if (!parsed.success) {
-    throw new Error("Geçersiz sunucu yanıtı");
+    // Surface WHICH fields failed (and the HTTP status) so this is debuggable,
+    // rather than the opaque "invalid server response" the old code threw.
+    const issues = parsed.error.issues
+      .slice(0, 3)
+      .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+      .join("; ");
+    throw new Error(`Geçersiz sunucu yanıtı (HTTP ${res.status}) — ${issues || rawText.slice(0, 200)}`);
   }
   return parsed.data;
 }

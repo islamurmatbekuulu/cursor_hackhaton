@@ -25,6 +25,30 @@ export default function ResultScreen() {
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 20, gap: 16 }}>
       <ScoreCard result={result} />
 
+      {result.report ? (
+        <View
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: 16,
+            borderCurve: "continuous",
+            padding: 16,
+            gap: 8,
+            shadowColor: "#0f172a",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.08,
+            shadowRadius: 16,
+            elevation: 3,
+          }}
+        >
+          <Text style={{ fontSize: 12, color: "#0d9488", fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Değerlendirme
+          </Text>
+          <Text selectable style={{ fontSize: 15, color: "#1e293b", lineHeight: 22 }}>
+            {result.report}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={{ gap: 6 }}>
         <Text style={{ fontSize: 13, fontWeight: "600", color: "#334155" }}>Kayıt durumu</Text>
         <Text style={{ fontSize: 14, color: result.persisted ? "#0d9488" : "#b45309" }}>
