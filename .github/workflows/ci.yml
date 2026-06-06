@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  go-api:
+    name: Go API (masterfabric-go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache-dependency-path: services/api/go.sum
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Test (walkability scoring)
+        run: go test ./internal/domain/walkability/... ./internal/application/walkability/...
+
+  web-shared:
+    name: Web + shared-types typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+      - name: Typecheck shared-types
+        run: npx tsc --noEmit -p packages/shared-types/tsconfig.json
+      - name: Typecheck web
+        run: npm run typecheck --workspace=apps/web
+
+  sidecar:
+    name: Sidecar syntax check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/sidecar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile
+        run: python -m py_compile app/*.py
+
+  kvkk-review:
+    name: KVKK AI review (Cursor CLI)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Cursor CLI
+        run: curl https://cursor.com/install -fsSL | bash
+      - name: Review diff for KVKK violations
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: |
+          if [ -z "$CURSOR_API_KEY" ]; then echo "CURSOR_API_KEY not set; skipping"; exit 0; fi
+          export PATH="$HOME/.cursor/bin:$PATH"
+          DIFF_RANGE="${{ github.event.pull_request.base.sha }}..${{ github.sha }}"
+          git diff "$DIFF_RANGE" > /tmp/diff.patch || git diff HEAD~1 > /tmp/diff.patch
+          agent -p --output-format text "Review this git diff for KVKK violations (face/plate access, OCR, person/vehicle tracking, identity extraction, unblurred raw-image storage). Reply 'OK' if clean or 'BLOCK:<reason>'. Diff follows:\n$(cat /tmp/diff.patch)"

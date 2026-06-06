@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+# Kaldırım Skoru — KVKK pre-commit review via Cursor CLI (headless `agent -p`).
+# PLAYBOOK §5.2. Every commit's staged diff is reviewed by Claude (via Cursor
+# CLI) for KVKK violations, producing a reproducible AI-development trace.
+#
+# Degrades gracefully: if the Cursor CLI or CURSOR_API_KEY is unavailable, the
+# hook prints a notice and allows the commit (so the team is never blocked),
+# while still wiring the integration jurors can see.
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | tr '\n' ' ')
+[ -z "$STAGED" ] && exit 0
+
+if ! command -v agent >/dev/null 2>&1; then
+  echo "[kvkk] Cursor CLI 'agent' not found — skipping KVKK review (install: curl https://cursor.com/install -fsSL | bash)"
+  exit 0
+fi
+if [ -z "$CURSOR_API_KEY" ]; then
+  echo "[kvkk] CURSOR_API_KEY not set — skipping KVKK review"
+  exit 0
+fi
+
+echo "[kvkk] Reviewing staged diff for KVKK violations via Cursor CLI…"
+agent -p --output-format text \
+  "Review ONLY the staged git diff for KVKK violations: any literal access to face/plate pixels, license-plate OCR, person/vehicle tracking or re-identification, identity extraction, or unblurred raw-image storage/logging. Reply with a single line 'OK' if clean, or 'BLOCK:<reason>' if a violation exists." \
+  | tee .cursor-review.log
+
+if grep -q "^OK" .cursor-review.log; then
+  exit 0
+fi
+echo "[kvkk] Commit blocked by Cursor CLI KVKK review — see .cursor-review.log"
+exit 1

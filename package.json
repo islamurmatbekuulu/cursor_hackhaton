@@ -13,7 +13,11 @@
     "build:web": "npm run build --workspace=apps/web",
     "build:shared": "npm run build --workspace=packages/shared-types",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   },
   "engines": {
     "node": ">=20"
