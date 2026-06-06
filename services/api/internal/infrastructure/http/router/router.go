@@ -17,6 +17,7 @@ import (
 	"github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/health"
 	iamHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/iam"
 	tenantHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/tenant"
+	walkabilityHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/walkability"
 
 	// Services & middleware
 	iamService "github.com/masterfabric-go/masterfabric/internal/domain/iam/service"
@@ -42,6 +43,9 @@ type Dependencies struct {
 	TenantHandler *tenantHandler.Handler
 	APIMgmtHandler *apimgmtHandler.Handler
 	AuditHandler  *auditHandler.Handler
+
+	// Kaldırım Skoru (walkability) — public scoring endpoints
+	WalkabilityHandler *walkabilityHandler.Handler
 
 	// Gateway
 	GatewayPipeline *gateway.Pipeline
@@ -85,6 +89,13 @@ func New(deps Dependencies) *chi.Mux {
 				r.Post("/login", deps.IAMHandler.Login)
 			}
 		})
+
+		// Kaldırım Skoru scoring endpoints (public for the hackathon demo).
+		// Street mode (Street View) + photo mode (Expo capture) share one shape.
+		if deps.WalkabilityHandler != nil {
+			r.Post("/score", deps.WalkabilityHandler.ScoreStreet)
+			r.Post("/score/photo", deps.WalkabilityHandler.ScorePhoto)
+		}
 
 		// Protected routes (require JWT)
 		r.Group(func(r chi.Router) {

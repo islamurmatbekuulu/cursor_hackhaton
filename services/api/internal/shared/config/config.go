@@ -10,12 +10,30 @@ import (
 
 // Config holds all application configuration.
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	Kafka    KafkaConfig
-	Log      LogConfig
+	Server      ServerConfig
+	Database    DatabaseConfig
+	Redis       RedisConfig
+	JWT         JWTConfig
+	Kafka       KafkaConfig
+	Log         LogConfig
+	Walkability WalkabilityConfig
+}
+
+// WalkabilityConfig holds settings for the Kaldırım Skoru bounded context:
+// Google Maps Platform access, the CV sidecar, and the scoring config file.
+type WalkabilityConfig struct {
+	GoogleMapsAPIKey        string
+	GoogleMapsSigningSecret string // optional; URL signing applied only if set
+	SidecarURL              string
+	SidecarToken            string
+	ScoringConfigPath       string
+	MaxPoints               int
+}
+
+// Enabled reports whether street/photo scoring can run (requires a Maps key and
+// a sidecar URL). When false, the endpoints return a clear "not configured" error.
+func (w WalkabilityConfig) Enabled() bool {
+	return w.GoogleMapsAPIKey != "" && w.SidecarURL != ""
 }
 
 // ServerConfig holds HTTP server settings.
@@ -123,6 +141,15 @@ func Load() *Config {
 		Log: LogConfig{
 			Level:  envOrDefault("LOG_LEVEL", "info"),
 			Format: envOrDefault("LOG_FORMAT", "json"),
+		},
+		Walkability: WalkabilityConfig{
+			// One Google key serves backend + web; BACKEND_KEY falls back to the shared key.
+			GoogleMapsAPIKey:        envOrDefault("GOOGLE_MAPS_BACKEND_KEY", os.Getenv("GOOGLE_MAPS_API_KEY")),
+			GoogleMapsSigningSecret: os.Getenv("GOOGLE_MAPS_SIGNING_SECRET"),
+			SidecarURL:              envOrDefault("SIDECAR_URL", "http://localhost:8000"),
+			SidecarToken:            os.Getenv("INTERNAL_SIDECAR_TOKEN"),
+			ScoringConfigPath:       envOrDefault("SCORING_CONFIG_PATH", "scoring.config.json"),
+			MaxPoints:               envOrDefaultInt("WALKABILITY_MAX_POINTS", 20),
 		},
 	}
 }

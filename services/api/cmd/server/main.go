@@ -19,7 +19,11 @@ import (
 	auditHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/audit"
 	iamHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/iam"
 	tenantHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/tenant"
+	walkabilityHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/walkability"
 	"github.com/masterfabric-go/masterfabric/internal/infrastructure/http/router"
+	"github.com/masterfabric-go/masterfabric/internal/infrastructure/scoring"
+	"github.com/masterfabric-go/masterfabric/internal/infrastructure/sidecar"
+	"github.com/masterfabric-go/masterfabric/internal/infrastructure/streetview"
 	infraKafka "github.com/masterfabric-go/masterfabric/internal/infrastructure/kafka"
 	pgApimgmt "github.com/masterfabric-go/masterfabric/internal/infrastructure/postgres/apimanagement"
 	pgAudit "github.com/masterfabric-go/masterfabric/internal/infrastructure/postgres/audit"
@@ -30,6 +34,7 @@ import (
 	apimgmtUC "github.com/masterfabric-go/masterfabric/internal/application/apimanagement/usecase"
 	iamUC "github.com/masterfabric-go/masterfabric/internal/application/iam/usecase"
 	tenantUC "github.com/masterfabric-go/masterfabric/internal/application/tenant/usecase"
+	walkabilityUC "github.com/masterfabric-go/masterfabric/internal/application/walkability/usecase"
 
 	// Gateway
 	"github.com/masterfabric-go/masterfabric/internal/gateway"
@@ -197,8 +202,29 @@ func buildDependencies(
 		Redis:  redisClient,
 	}
 
+	// --- Kaldırım Skoru (walkability) wiring ---
+	// This bounded context needs neither Postgres nor Redis, so wire it up
+	// regardless of database availability (scoring must work on Render free tier).
+	if cfg.Walkability.Enabled() {
+		scoringCfg := scoring.Load(cfg.Walkability.ScoringConfigPath, log)
+		svClient := streetview.New(streetview.Config{
+			APIKey:        cfg.Walkability.GoogleMapsAPIKey,
+			SigningSecret: cfg.Walkability.GoogleMapsSigningSecret,
+		}, log)
+		detector := sidecar.New(sidecar.Config{
+			BaseURL: cfg.Walkability.SidecarURL,
+			Token:   cfg.Walkability.SidecarToken,
+		}, log)
+		scoreStreetUC := walkabilityUC.NewScoreStreetUseCase(svClient, detector, scoringCfg, log, cfg.Walkability.MaxPoints)
+		scorePhotoUC := walkabilityUC.NewScorePhotoUseCase(detector, scoringCfg, log)
+		deps.WalkabilityHandler = walkabilityHandler.NewHandler(scoreStreetUC, scorePhotoUC)
+		log.Info("walkability scoring enabled", "sidecar", cfg.Walkability.SidecarURL, "max_points", cfg.Walkability.MaxPoints)
+	} else {
+		log.Warn("walkability scoring disabled: set GOOGLE_MAPS_API_KEY and SIDECAR_URL to enable")
+	}
+
 	if db == nil {
-		log.Warn("database not available, API endpoints will not work")
+		log.Warn("database not available, IAM/tenant/gateway endpoints will not work")
 		return deps
 	}
 
