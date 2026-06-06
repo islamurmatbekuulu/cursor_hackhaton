@@ -6,8 +6,9 @@ alwaysApply: true
 
 - NO field, log line, or storage that contains face, plate, person, or vehicle identifiers.
 - NO fine-tuning on Google Street View data (no derivative dataset creation).
-- Anonymization (face + plate blur) runs FIRST, before any urban-object detector touches the bytes.
+- User-uploaded photos: anonymization (face + plate blur) runs FIRST, locally, before any urban-object detector touches the bytes (receipt gate enforced). Google Street View imagery is exempt from local re-blur because Google blurs faces + plates at the source before publishing; the Street View `/detect` path asserts that pre-blurred source (`X-Image-Source`) and bypasses the receipt gate for that narrow case ONLY. See the "Street View source-side blurring" section in `KVKK_COMPLIANCE.md` (§5) for the justification, exact mechanism, and residual-risk acknowledgment.
 - All raw images deleted at end of request; explicit nil + GC. No temp files, no public buckets.
+- Persist ONLY post-/anonymize blurred PNG bytes for municipality review (`submissions.image_blurred`); never raw uploads. See `KVKK_COMPLIANCE.md` §5.3.
 - Do NOT run OCR over license plates anywhere — even for testing.
 - Do NOT call any person/pedestrian/vehicle detection model on images.
 - Do NOT join panorama IDs with face/plate counts (reverse-engineerable into tracking data).
