@@ -8,6 +8,11 @@ under KVKK constraints.
 2. `.cursor/rules/40-kvkk.mdc` — KVKK red lines
 3. `KVKK_COMPLIANCE.md`
 
+## Mandatory backend architecture
+- The Go backend MUST use the `masterfabric-go` architecture (https://github.com/gurkanfikretgunak/masterfabric-go),
+  vendored in `services/api/`. Building a custom backend is NOT accepted. Extend it with a new
+  bounded context for the scoring feature. See `.cursor/rules/20-backend-go.mdc`.
+
 ## Skill requirements
 - Web UI (`apps/web/**`): follow the `ui-ux-pro-max` and `design-taste-frontend` skills.
 - Mobile (`apps/mobile/**`): follow the `building-native-ui` and `vercel-react-native-skills` skills.

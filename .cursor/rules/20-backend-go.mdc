@@ -1,17 +1,40 @@
 ---
-description: Go backend conventions
+description: Go backend conventions (MANDATORY masterfabric-go architecture)
 globs: ["services/api/**"]
 ---
-# Go Backend (chi on Render)
+# Go Backend — MANDATORY: masterfabric-go architecture
 
-- `chi` router + `zerolog`. NO ORM (use `database/sql` only if persistence is added).
-- Every handler returns RFC 7807 `application/problem+json` on error.
-- Outbound HTTP via a single retryable client (3 retries, exponential backoff, sane timeouts).
-- Roboflow + sidecar tokens read from env at startup; FAIL FAST if missing.
-- Street View Static URLs MUST be HMAC-SHA1 signed when called from this service.
-- Go is the system of record / API gateway / scoring engine. The Python sidecar is an internal
-  microservice called via service-to-service HTTPS with `INTERNAL_SIDECAR_TOKEN`.
-- Raw image bytes: `bytes.NewReader` + `http.NewRequest`, `defer req.Body.Close()`. No temp files.
-  No log statement ever takes raw image bytes as an argument.
-- Resize images > 5 MB to ≤ 1280×1280 before sending to Roboflow (5 MB ingest cap).
-- Scoring lives in `scoring.go`, driven by `scoring.config.json` (weights + caps editable without code changes).
+The hackathon ruleset REQUIRES using the architecture of
+https://github.com/gurkanfikretgunak/masterfabric-go as the backend infrastructure.
+Building a custom/own backend architecture is NOT accepted (disqualification risk).
+
+## How we use it
+- The masterfabric-go repository is vendored into `services/api/` and is the backend base.
+- Keep its upstream `LICENSE` (AGPL v3.0) inside `services/api/`; credit it in the root README.
+- Do NOT rewrite its architecture. EXTEND it: add our feature as a new bounded context.
+
+## Architecture (do not deviate)
+- Clean / hexagonal architecture, Domain-Driven Design with bounded contexts.
+- Layers: `internal/domain` (zero external deps) → `internal/application` (use cases + DTOs)
+  → `internal/infrastructure` (postgres/redis/http impls). Entry point: `cmd/server`.
+- Stack: Go 1.22+, Chi router, PostgreSQL (pgx), Redis, goose migrations, JWT (golang-jwt) + bcrypt,
+  slog (structured JSON), go-playground/validator, OpenTelemetry/Prometheus.
+- Kafka is OPTIONAL: run with `KAFKA_ENABLED=false` (in-process EventBus) for the hackathon/Render.
+- Health probes `/health/live` `/health/ready`, `/metrics`. Server on :8080.
+
+## Our feature (Kaldırım Skoru) inside this architecture
+- Add a new bounded context, e.g. `internal/domain/walkability` (entities: ScoreRequest, Detection,
+  StreetScore, Grade) with repository interfaces.
+- `internal/application/walkability`: use cases — ScoreStreet, ScorePhoto — orchestrating
+  Google Street View fetch + Python CV sidecar (`/anonymize` then `/detect`) + scoring formula.
+- `internal/infrastructure`: Street View HTTP client (HMAC-SHA1 sign ONLY if a signing secret is set,
+  else call unsigned), sidecar HTTP client (uses `INTERNAL_SIDECAR_TOKEN`), Roboflow proxy if needed.
+- Expose endpoints under the project's `/api/v1` convention (e.g. `POST /api/v1/score`,
+  `POST /api/v1/score/photo`). Reuse its middleware, error envelopes, validator, slog.
+- Scoring weights/caps live in `scoring.config.json`, loaded at startup (editable without code changes).
+
+## Hard rules (unchanged)
+- Secrets read from env at startup; FAIL FAST if missing. Never hardcode keys.
+- Raw image bytes: `bytes.NewReader` only, in-memory, `defer Body.Close()`. No temp files, no logging raw bytes.
+- Log `{face_count, plate_count, image_sha256}` before any detector call. Anonymization runs first.
+- Resize images > 5 MB to ≤ 1280×1280 before Roboflow (5 MB ingest cap).

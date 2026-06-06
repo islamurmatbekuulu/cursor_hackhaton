@@ -9,7 +9,7 @@ Istanbul sidewalk / visual-pollution walkability scoring app.
 ## Stack
 - **Web:** Next.js 14 (App Router) on Vercel
 - **Mobile:** Expo (SDK 51, expo-router) via EAS
-- **API:** Go (chi + zerolog) on Render
+- **API:** Go on Render — MANDATORY masterfabric-go architecture (vendored in `services/api/`, clean/hexagonal + DDD). Do not build a custom backend. See `.cursor/rules/20-backend-go.mdc`.
 - **CV sidecar:** Python FastAPI + Ultralytics on Render
 - **Primary CV:** Roboflow Serverless `visual-pollution-pc2as/9`
 - **Shared contracts:** `packages/shared-types`
