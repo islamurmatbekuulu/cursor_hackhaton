@@ -15,6 +15,7 @@
       }
     },
     "android": {
+      "package": "com.kaldirimskoru.app",
       "permissions": [
         "CAMERA",
         "READ_MEDIA_IMAGES",

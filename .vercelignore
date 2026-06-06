@@ -1,0 +1,16 @@
+.env
+.env.*
+**/.env
+**/.env.*
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+*.log
+**/*.log
+.expo
+**/.expo
+coverage
+**/coverage
