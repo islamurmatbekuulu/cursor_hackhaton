@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Kaldırım Skoru",
+    "slug": "kaldirim-skoru",
+    "scheme": "kaldirimskoru",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kaldırım fotoğrafı çekmek için kameraya erişim gerekir.",
+        "NSPhotoLibraryUsageDescription": "Kaldırım fotoğrafı seçmek için galeriye erişim gerekir."
+      }
+    },
+    "android": {
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Kaldırım fotoğrafı seçmek için galeriye erişim gerekir.",
+          "cameraPermission": "Kaldırım fotoğrafı çekmek için kameraya erişim gerekir."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBase": "http://localhost:8080"
+    }
+  }
+}
