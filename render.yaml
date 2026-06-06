@@ -24,16 +24,11 @@ services:
       - key: ROBOFLOW_OVERLAP
         value: "0.5"
       - key: ANON_MODEL_PATH
-        value: /var/data/panoramax/model.pt
+        value: /tmp/panoramax/model.pt
       - key: ANON_MODEL_URL
         sync: false
       - key: HF_TOKEN
         sync: false
-    disk:
-      name: sidecar-models
-      mountPath: /var/data
-      sizeGB: 1
-
   - type: web
     name: kaldirim-api
     runtime: docker
