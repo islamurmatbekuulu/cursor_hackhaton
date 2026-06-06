@@ -68,7 +68,7 @@ export default function CaptureScreen() {
       {uri ? (
         <Image
           source={{ uri }}
-          style={{ width: "100%", aspectRatio: 4 / 3, borderRadius: 16, borderCurve: "continuous", backgroundColor: "#e2e8f0" }}
+          style={{ width: "100%", aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: "#e2e8f0" }}
           contentFit="cover"
         />
       ) : (

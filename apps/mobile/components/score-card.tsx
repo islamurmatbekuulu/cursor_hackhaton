@@ -14,7 +14,12 @@ export function ScoreCard({ result }: { result: ScoreResponse }) {
         borderCurve: "continuous",
         padding: 20,
         gap: 16,
-        boxShadow: "0 10px 30px rgba(15,23,42,0.10)",
+        // RN 0.74 (SDK 51) shadow props; boxShadow lands in RN 0.76+.
+        shadowColor: "#0f172a",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 4,
       }}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>

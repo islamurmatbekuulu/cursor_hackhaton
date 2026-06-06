@@ -14,7 +14,7 @@
     "build:shared": "npm run build --workspace=packages/shared-types",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "prepare": "husky || true"
+    "prepare": "husky || exit 0"
   },
   "devDependencies": {
     "husky": "^9.1.7"
