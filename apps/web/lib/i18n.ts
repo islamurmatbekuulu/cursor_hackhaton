@@ -1,63 +1,69 @@
-import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
-
-// Turkish-first UI copy. No hardcoded strings in components — everything via t().
-export const tr = {
-  translation: {
-    app: {
-      title: "Kaldırım Skoru",
-      tagline: "İstanbul kaldırımları için görsel kirlilik ve yürünebilirlik skoru",
-    },
-    search: {
-      label: "Sokak veya cadde adı",
-      placeholder: "örn. İstiklal Caddesi, Beyoğlu",
-      button: "Skorla",
-      hint: "Bir sokak adı girin; Street View görüntüleri anonimleştirilip puanlanır.",
-    },
-    states: {
-      loading: "Görüntüler anonimleştiriliyor ve puanlanıyor…",
-      emptyTitle: "Henüz bir sonuç yok",
-      emptyBody: "Yukarıdan bir sokak arayın. Sonuç haritada ve skor kartında görünecek.",
-      errorTitle: "Bir şeyler ters gitti",
-      retry: "Tekrar dene",
-    },
-    score: {
-      title: "Kaldırım Skoru",
-      grade: "Not",
-      pollution: "Kirlilik (ham)",
-      points: "Örnek nokta",
-      classes: "Tespit edilen sınıflar",
-      noDetections: "Bu konumda tespit bulunamadı.",
-      panoDate: "Görüntü tarihi",
-      limitations: "Sınırlamalar",
-    },
-    report: {
-      pdf: "Şikayet Dosyası İndir (PDF)",
-      csv: "CSV indir",
-      generating: "Hazırlanıyor…",
-      heading: "Kaldırım Skoru — Şikayet Dosyası",
-      addressedTo: "İlgili Belediye Başkanlığına",
-      formula: "Skor Formülü",
-      generatedAt: "Oluşturulma",
-    },
-    map: {
-      legend: "Kirlilik yoğunluğu",
-      low: "Düşük",
-      high: "Yüksek",
-    },
-    kvkk: {
-      note: "Görüntülerdeki yüz ve plakalar, herhangi bir analiz öncesinde geri dönülemez biçimde bulanıklaştırılır. Ham görüntü saklanmaz.",
-    },
-  },
-};
-
-if (!i18n.isInitialized) {
-  void i18n.use(initReactI18next).init({
-    resources: { tr },
-    lng: "tr",
-    fallbackLng: "tr",
-    interpolation: { escapeValue: false },
-  });
-}
-
-export default i18n;
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+
+// Turkish-first municipality console copy. No hardcoded strings in components — everything via t().
+export const tr = {
+  translation: {
+    app: {
+      title: "Kaldırım Skoru — Belediye Konsolu",
+      badge: "Belediye Konsolu",
+      tagline: "Vatandaşların mobil uygulamadan gönderdiği kaldırım fotoğraflarını inceleyin ve sokak bazında skorları takip edin.",
+    },
+    console: {
+      reportsHeading: "Vatandaş Bildirimleri",
+      demoBadge: "Demo modu: örnek İstanbul bildirimleri gösteriliyor. Canlı API için NEXT_PUBLIC_USE_DEMO_DATA=false ayarlayın.",
+    },
+    filter: {
+      label: "Sokak veya cadde",
+      placeholder: "örn. İstiklal Caddesi, Beyoğlu",
+      allStreets: "Tüm sokaklar",
+      clear: "Temizle",
+      streetAverage: "Sokak ortalama skoru",
+      reportCount: "Bildirim sayısı",
+      hintPlaces: "Google Places önerilerinden bir sokak seçin veya ad yazıp Enter'a basın.",
+      hintDropdown: "Places kullanılamıyor — demo sokak listesinden seçin.",
+    },
+    list: {
+      heading: "Bildirim listesi",
+      emptyTitle: "Bu sokak için bildirim yok",
+      emptyBody: "Farklı bir sokak seçin veya filtreyi temizleyin.",
+    },
+    detail: {
+      title: "Bildirim Detayı",
+      close: "Kapat",
+      score: "Skor",
+      pollution: "Kirlilik (ham)",
+      date: "Gönderim tarihi",
+      coords: "Koordinatlar",
+      classes: "Kirlilik dağılımı",
+      noDetections: "Bu bildirimde tespit bulunamadı.",
+      limitations: "Sınırlamalar",
+      photoAlt: "Bulanıklaştırılmış vatandaş fotoğrafı",
+      photoBadge: "Bulanıklaştırılmış",
+      photoCaption: "Vatandaş fotoğrafı — analiz öncesi anonimleştirilmiş kopya",
+    },
+    map: {
+      legendGrades: "Not renkleri",
+      aggregateHint: "Büyük daireler: sokak ortalama skoru (tüm sokaklar görünümünde).",
+      unavailable: "Harita yüklenemedi",
+      unavailableKey:
+        "Google Maps tarayıcı anahtarı tanımlı değil. Bildirim listesi yine de çalışır; harita için anahtar ekleyin.",
+      unavailableAuth:
+        "Google Maps anahtarı reddedildi. Anahtarın Maps JavaScript API + Places API için yetkili ve alan adının (referrer) izinli olduğundan emin olun.",
+    },
+    kvkk: {
+      note: "Vatandaş fotoğrafları analizden önce yüz ve plaka için bulanıklaştırılır; belediye incelemesi için yalnızca bulanık kopya saklanır, ham görüntü asla depolanmaz. Street View kullanılmaz.",
+    },
+  },
+};
+
+if (!i18n.isInitialized) {
+  void i18n.use(initReactI18next).init({
+    resources: { tr },
+    lng: "tr",
+    fallbackLng: "tr",
+    interpolation: { escapeValue: false },
+  });
+}
+
+export default i18n;

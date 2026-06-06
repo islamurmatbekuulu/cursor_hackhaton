@@ -7,8 +7,8 @@ const sans = Outfit({ subsets: ["latin"], variable: "--font-sans", display: "swa
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Kaldırım Skoru",
-  description: "İstanbul kaldırımları için görsel kirlilik ve yürünebilirlik skoru.",
+  title: "Kaldırım Skoru — Belediye Konsolu",
+  description: "İstanbul vatandaş kaldırım bildirimlerini incelemek için belediye konsolu.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

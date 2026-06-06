@@ -16,11 +16,14 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Leaflet container must have an explicit height. */
-.leaflet-container {
-  height: 100%;
-  width: 100%;
-  background: #e2e8f0;
+/* Google Places Autocomplete dropdown — keep it above app chrome and on-brand. */
+.pac-container {
+  z-index: 1100;
+  margin-top: 4px;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 40px -18px rgba(15, 23, 42, 0.18);
+  font-family: inherit;
 }
 
 /* Tabular figures for all data numbers (prevents layout shift). */
