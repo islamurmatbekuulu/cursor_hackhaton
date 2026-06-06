@@ -95,6 +95,90 @@ func (c *Client) Geocode(ctx context.Context, address string) (model.GeoPoint, e
 	return model.GeoPoint{Lat: loc.Lat, Lng: loc.Lng}, nil
 }
 
+// ReverseGeocode resolves coordinates to a street label via the Geocoding API.
+func (c *Client) ReverseGeocode(ctx context.Context, lat, lng float64) (string, string, error) {
+	q := url.Values{}
+	q.Set("latlng", fmt.Sprintf("%f,%f", lat, lng))
+	q.Set("key", c.cfg.APIKey)
+	q.Set("language", "tr")
+	q.Set("result_type", "route")
+
+	var out struct {
+		Status  string `json:"status"`
+		Results []struct {
+			FormattedAddress string `json:"formatted_address"`
+			Types            []string `json:"types"`
+			AddressComponents []struct {
+				LongName string   `json:"long_name"`
+				Types    []string `json:"types"`
+			} `json:"address_components"`
+		} `json:"results"`
+	}
+	if err := c.getJSON(ctx, geocodeURL+"?"+q.Encode(), &out); err != nil {
+		return "", "", err
+	}
+	if out.Status != "OK" || len(out.Results) == 0 {
+		label := fmt.Sprintf("%.5f, %.5f", lat, lng)
+		return label, normalizeStreetKey(label), nil
+	}
+
+	label := ""
+	for _, r := range out.Results {
+		for _, t := range r.Types {
+			if t != "route" {
+				continue
+			}
+			for _, comp := range r.AddressComponents {
+				for _, ct := range comp.Types {
+					if ct == "route" {
+						label = comp.LongName
+						break
+					}
+				}
+				if label != "" {
+					break
+				}
+			}
+			if label == "" && r.FormattedAddress != "" {
+				label = r.FormattedAddress
+			}
+			break
+		}
+		if label != "" {
+			break
+		}
+	}
+	if label == "" && len(out.Results) > 0 {
+		label = out.Results[0].FormattedAddress
+	}
+	if label == "" {
+		label = fmt.Sprintf("%.5f, %.5f", lat, lng)
+	}
+	return label, normalizeStreetKey(label), nil
+}
+
+func normalizeStreetKey(label string) string {
+	label = strings.ToLower(strings.TrimSpace(label))
+	var b strings.Builder
+	lastDash := false
+	for _, r := range label {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+			lastDash = false
+			continue
+		}
+		if !lastDash && b.Len() > 0 {
+			b.WriteByte('-')
+			lastDash = true
+		}
+	}
+	s := strings.Trim(b.String(), "-")
+	if s == "" {
+		return "unknown"
+	}
+	return s
+}
+
 // SnapToRoads aligns a path to road geometry with interpolation.
 func (c *Client) SnapToRoads(ctx context.Context, path []model.GeoPoint) ([]model.GeoPoint, error) {
 	if len(path) == 0 {

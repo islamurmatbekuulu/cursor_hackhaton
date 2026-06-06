@@ -95,6 +95,8 @@ func New(deps Dependencies) *chi.Mux {
 		if deps.WalkabilityHandler != nil {
 			r.Post("/score", deps.WalkabilityHandler.ScoreStreet)
 			r.Post("/score/photo", deps.WalkabilityHandler.ScorePhoto)
+			r.Get("/submissions", deps.WalkabilityHandler.ListSubmissions)
+			r.Get("/submissions/{id}/image", deps.WalkabilityHandler.GetSubmissionImage)
 		}
 
 		// Protected routes (require JWT)

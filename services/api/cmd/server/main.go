@@ -29,12 +29,14 @@ import (
 	pgAudit "github.com/masterfabric-go/masterfabric/internal/infrastructure/postgres/audit"
 	pgIam "github.com/masterfabric-go/masterfabric/internal/infrastructure/postgres/iam"
 	pgTenant "github.com/masterfabric-go/masterfabric/internal/infrastructure/postgres/tenant"
+	pgWalkability "github.com/masterfabric-go/masterfabric/internal/infrastructure/postgres/walkability"
 
 	// Application use cases
 	apimgmtUC "github.com/masterfabric-go/masterfabric/internal/application/apimanagement/usecase"
 	iamUC "github.com/masterfabric-go/masterfabric/internal/application/iam/usecase"
 	tenantUC "github.com/masterfabric-go/masterfabric/internal/application/tenant/usecase"
 	walkabilityUC "github.com/masterfabric-go/masterfabric/internal/application/walkability/usecase"
+	walkabilityRepo "github.com/masterfabric-go/masterfabric/internal/domain/walkability/repository"
 
 	// Gateway
 	"github.com/masterfabric-go/masterfabric/internal/gateway"
@@ -215,9 +217,17 @@ func buildDependencies(
 			BaseURL: cfg.Walkability.SidecarURL,
 			Token:   cfg.Walkability.SidecarToken,
 		}, log)
+		var submissionRepo walkabilityRepo.SubmissionRepository
+		if db != nil {
+			submissionRepo = pgWalkability.NewSubmissionRepo(db)
+		}
 		scoreStreetUC := walkabilityUC.NewScoreStreetUseCase(svClient, detector, scoringCfg, log, cfg.Walkability.MaxPoints)
-		scorePhotoUC := walkabilityUC.NewScorePhotoUseCase(detector, scoringCfg, log)
-		deps.WalkabilityHandler = walkabilityHandler.NewHandler(scoreStreetUC, scorePhotoUC)
+		scorePhotoUC := walkabilityUC.NewScorePhotoUseCase(detector, svClient, submissionRepo, scoringCfg, log)
+		listSubmissionsUC := walkabilityUC.NewListSubmissionsUseCase(submissionRepo, scoringCfg, log)
+		getSubmissionImageUC := walkabilityUC.NewGetSubmissionImageUseCase(submissionRepo)
+		deps.WalkabilityHandler = walkabilityHandler.NewHandler(
+			scoreStreetUC, scorePhotoUC, listSubmissionsUC, getSubmissionImageUC,
+		)
 		log.Info("walkability scoring enabled", "sidecar", cfg.Walkability.SidecarURL, "max_points", cfg.Walkability.MaxPoints)
 	} else {
 		log.Warn("walkability scoring disabled: set GOOGLE_MAPS_API_KEY and SIDECAR_URL to enable")

@@ -1,11 +1,17 @@
 // Package usecase orchestrates the Kaldırım Skoru scoring flows. It depends only
 // on domain ports (StreetViewProvider, Detector) and the pure scoring service —
 // never on concrete infrastructure.
+//
+// DEPRECATED product path: ScoreStreetUseCase (Google Street View) is no longer
+// invoked by HTTP — POST /api/v1/score returns 410 Gone. Mobile photo submissions
+// are the primary flow. Code retained for juror git history.
 package usecase
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 
 	"github.com/masterfabric-go/masterfabric/internal/application/walkability/dto"
@@ -23,7 +29,9 @@ var defaultHeadings = []int{0, 180}
 const maxConcurrentImages = 4
 
 // ScoreStreetUseCase scores a named street using Google Street View imagery
-// anonymized + analyzed by the CV sidecar.
+// analyzed by the CV sidecar. Street View imagery is face/plate-blurred at the
+// source by Google, so this flow detects on the pre-blurred bytes directly
+// (no local re-blur); see scorePoint and KVKK_COMPLIANCE.md §5.
 type ScoreStreetUseCase struct {
 	sv        repository.StreetViewProvider
 	detector  repository.Detector
@@ -53,16 +61,16 @@ func (uc *ScoreStreetUseCase) Execute(ctx context.Context, req dto.ScoreStreetRe
 		maxPoints = req.MaxPoints
 	}
 
-	origin, err := uc.sv.Geocode(ctx, req.Street)
+	origin, label, err := uc.resolveOrigin(ctx, req)
 	if err != nil {
-		return nil, domainErr.New(domainErr.ErrBadRequest, "could not geocode street", err)
+		return nil, err
 	}
 
-	// Build a short seed segment around the geocoded point and snap it to roads.
+	// Build a short seed segment around the seed point and snap it to roads.
 	seed := seedPath(origin, 6, 0.0004) // ~6 points spanning ~250 m
 	snapped, err := uc.sv.SnapToRoads(ctx, seed)
 	if err != nil || len(snapped) == 0 {
-		uc.log.Warn("snapToRoads unavailable, sampling around geocoded point", "error", err)
+		uc.log.Warn("snapToRoads unavailable, sampling around seed point", "error", err)
 		snapped = seed
 	}
 	sampled := samplePoints(snapped, maxPoints)
@@ -70,11 +78,48 @@ func (uc *ScoreStreetUseCase) Execute(ctx context.Context, req dto.ScoreStreetRe
 	results := uc.fanOut(ctx, sampled)
 
 	summary := service.Score(uc.cfg, results)
-	summary.Query = req.Street
+	summary.Query = label
 	summary.Points = results
 	summary.PanoramaDates = collectDates(results)
 	summary.Limitations = limitations(results)
 	return &summary, nil
+}
+
+// resolveOrigin determines the snapToRoads seed coordinate plus a human-readable
+// query label. When the request carries a usable (Lat,Lng) pair — e.g. from
+// Google Places Autocomplete — geocoding is SKIPPED and the coordinate is used
+// directly. Otherwise the free-text Street is geocoded. If neither a usable
+// Street nor coordinates are supplied, a 400-class domain error is returned.
+func (uc *ScoreStreetUseCase) resolveOrigin(ctx context.Context, req dto.ScoreStreetRequest) (model.GeoPoint, string, error) {
+	if req.HasCoordinates() {
+		lat, lng := *req.Lat, *req.Lng
+		if !validLatLng(lat, lng) {
+			return model.GeoPoint{}, "", domainErr.New(domainErr.ErrBadRequest, "lat/lng out of range", nil)
+		}
+		// place_id is logged for diagnostics only; the coordinate is authoritative.
+		uc.log.Info("scoring with client coordinates (geocode skipped)",
+			"lat", lat, "lng", lng, "place_id", req.PlaceID)
+		label := strings.TrimSpace(req.Street)
+		if label == "" {
+			label = fmt.Sprintf("%.5f,%.5f", lat, lng)
+		}
+		return model.GeoPoint{Lat: lat, Lng: lng}, label, nil
+	}
+
+	street := strings.TrimSpace(req.Street)
+	if len(street) < 2 {
+		return model.GeoPoint{}, "", domainErr.New(domainErr.ErrBadRequest, "either 'street' or both 'lat' and 'lng' are required", nil)
+	}
+	origin, err := uc.sv.Geocode(ctx, street)
+	if err != nil {
+		return model.GeoPoint{}, "", domainErr.New(domainErr.ErrBadRequest, "could not geocode street", err)
+	}
+	return origin, street, nil
+}
+
+// validLatLng bounds a WGS84 coordinate to valid ranges.
+func validLatLng(lat, lng float64) bool {
+	return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
 }
 
 // fanOut fetches + analyzes imagery for each sampled point concurrently (bounded).
@@ -110,7 +155,14 @@ func (uc *ScoreStreetUseCase) fanOut(ctx context.Context, points []model.GeoPoin
 	return out
 }
 
-// scorePoint fetches both headings for a point, anonymizes + detects, and merges.
+// scorePoint fetches both headings for a point and detects urban objects.
+//
+// Street View imagery is already face/plate-blurred at the source by Google
+// before publishing, so this path SKIPS the local /anonymize blur step (it is
+// redundant and adds ~60s/scan) and sends the pre-blurred bytes straight to
+// detection via DetectPreBlurred. User-uploaded photos are NOT pre-anonymized
+// and keep the full anonymize→detect flow (see ScorePhotoUseCase).
+// KVKK justification + residual-risk acknowledgment: see KVKK_COMPLIANCE.md §5.
 func (uc *ScoreStreetUseCase) scorePoint(ctx context.Context, pt model.GeoPoint) model.PointResult {
 	res := model.PointResult{Point: pt}
 	for _, h := range defaultHeadings {
@@ -126,11 +178,11 @@ func (uc *ScoreStreetUseCase) scorePoint(ctx context.Context, pt model.GeoPoint)
 		res.PanoDate = img.PanoDate
 		res.Headings = append(res.Headings, h)
 
-		det, err := uc.detector.AnonymizeAndDetect(ctx, img.Image, img.MimeType)
+		det, err := uc.detector.DetectPreBlurred(ctx, img.Image, img.MimeType)
 		// Release raw bytes immediately (KVKK: no raw retention).
 		img.Image = nil
 		if err != nil {
-			uc.log.Warn("anonymize+detect failed", "heading", h, "error", err)
+			uc.log.Warn("street view detect failed", "heading", h, "error", err)
 			continue
 		}
 		res.Detections = append(res.Detections, det.Detections...)

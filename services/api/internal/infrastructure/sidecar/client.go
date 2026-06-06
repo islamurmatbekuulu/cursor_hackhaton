@@ -1,14 +1,25 @@
 // Package sidecar implements the Detector port against the Python CV sidecar.
 //
-// The sidecar enforces "anonymize before detect"; this client honors that
-// ordering by calling POST /anonymize first, logging the KVKK receipt
-// {face_count, plate_count, image_sha256}, then calling POST /detect with the
-// blurred bytes and the receipt hash. Raw image bytes are held in memory only.
+// Two flows are supported, matching the imagery source:
+//
+//   - AnonymizeAndDetect (user photos): POST /anonymize first, log the KVKK
+//     receipt {face_count, plate_count, image_sha256}, then POST /detect with
+//     the blurred bytes and the receipt hash. The sidecar enforces the receipt
+//     gate, guaranteeing "anonymize before detect".
+//   - DetectPreBlurred (Google Street View): the imagery is already face/plate
+//     blurred at the source, so the local /anonymize step is skipped. The client
+//     POSTs /detect with an explicit X-Image-Source assertion; the sidecar
+//     bypasses the receipt gate for that narrow, explicit case only. The image
+//     SHA-256 is still logged for auditability. See KVKK_COMPLIANCE.md §5.
+//
+// Raw image bytes are held in memory only; never written to disk.
 package sidecar
 
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +32,12 @@ import (
 	"github.com/masterfabric-go/masterfabric/internal/domain/walkability/model"
 	"github.com/masterfabric-go/masterfabric/internal/domain/walkability/repository"
 )
+
+// StreetViewSource is the value sent in the X-Image-Source header to assert that
+// the posted /detect image is pre-blurred at the source (Google Street View
+// blurs faces/plates before publishing). The sidecar bypasses the anonymization
+// receipt gate ONLY for requests carrying exactly this assertion.
+const StreetViewSource = "google-streetview-preblurred"
 
 // Config configures the sidecar client.
 type Config struct {
@@ -46,7 +63,9 @@ func New(cfg Config, log *slog.Logger) *Client {
 
 var _ repository.Detector = (*Client)(nil)
 
-// AnonymizeAndDetect blurs faces/plates then detects urban objects.
+// AnonymizeAndDetect blurs faces/plates then detects urban objects. Used for
+// user-uploaded photos, which are NOT pre-anonymized: the /anonymize step and
+// the sidecar receipt gate are mandatory here.
 func (c *Client) AnonymizeAndDetect(ctx context.Context, image []byte, mimeType string) (*repository.DetectionResult, error) {
 	blurred, receipt, err := c.anonymize(ctx, image, mimeType)
 	if err != nil {
@@ -60,16 +79,52 @@ func (c *Client) AnonymizeAndDetect(ctx context.Context, image []byte, mimeType 
 		"image_sha256", receipt.ImageSHA256,
 	)
 
-	detections, err := c.detect(ctx, blurred, receipt.ImageSHA256)
+	detections, err := c.detect(ctx, blurred, "blurred.png", detectOpts{receiptSHA: receipt.ImageSHA256})
 	if err != nil {
 		return nil, fmt.Errorf("detect: %w", err)
 	}
+
+	// Copy blurred bytes for optional persistence; detect path consumed a copy.
+	blurredCopy := make([]byte, len(blurred))
+	copy(blurredCopy, blurred)
 
 	return &repository.DetectionResult{
 		Detections:  detections,
 		FaceCount:   receipt.FaceCount,
 		PlateCount:  receipt.PlateCount,
 		ImageSHA256: receipt.ImageSHA256,
+		BlurredPNG:  blurredCopy,
+	}, nil
+}
+
+// DetectPreBlurred detects urban objects on imagery already anonymized at the
+// source (Google Street View blurs faces/plates before publishing). It SKIPS
+// the local /anonymize step — re-blurring pre-blurred imagery is redundant and
+// adds ~60s/scan — and asserts the pre-blurred source via X-Image-Source so the
+// sidecar bypasses its receipt gate for this narrow case only.
+//
+// This change only OMITS a blur step the source already performed; it adds no
+// face/plate/person/vehicle processing. The image SHA-256 is still computed and
+// logged for auditability. See KVKK_COMPLIANCE.md §5.
+func (c *Client) DetectPreBlurred(ctx context.Context, image []byte, mimeType string) (*repository.DetectionResult, error) {
+	sum := sha256.Sum256(image)
+	imageSHA := hex.EncodeToString(sum[:])
+
+	// KVKK audit log — pre-blurred source asserted; no local blur, no identity data.
+	c.log.Info("street view pre-blurred detect",
+		"image_source", StreetViewSource,
+		"image_sha256", imageSHA,
+	)
+
+	detections, err := c.detect(ctx, image, filenameFor(mimeType), detectOpts{source: StreetViewSource})
+	if err != nil {
+		return nil, fmt.Errorf("detect: %w", err)
+	}
+
+	// FaceCount/PlateCount are not applicable (no local anonymize step ran).
+	return &repository.DetectionResult{
+		Detections:  detections,
+		ImageSHA256: imageSHA,
 	}, nil
 }
 
@@ -110,9 +165,20 @@ func (c *Client) anonymize(ctx context.Context, image []byte, mimeType string) (
 	return blurred, rec, nil
 }
 
-// detect POSTs the blurred image with the anonymization receipt hash.
-func (c *Client) detect(ctx context.Context, blurred []byte, sha256 string) ([]model.Detection, error) {
-	body, contentType, err := multipartImage("image", "blurred.png", blurred)
+// detectOpts selects how the /detect call satisfies the sidecar's gate.
+// Exactly one field is set per call:
+//   - receiptSHA: proves a fresh /anonymize ran first (user-photo path).
+//   - source: asserts the imagery is pre-blurred at the source (Street View),
+//     which bypasses the receipt gate for that narrow case only.
+type detectOpts struct {
+	receiptSHA string
+	source     string
+}
+
+// detect POSTs the image to the sidecar, attaching either the anonymization
+// receipt hash or the pre-blurred source assertion per opts.
+func (c *Client) detect(ctx context.Context, img []byte, filename string, opts detectOpts) ([]model.Detection, error) {
+	body, contentType, err := multipartImage("image", filename, img)
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +186,14 @@ func (c *Client) detect(ctx context.Context, blurred []byte, sha256 string) ([]m
 	if err != nil {
 		return nil, err
 	}
-	// Receipt hash proves a fresh /anonymize ran first (ordering middleware).
-	req.Header.Set("X-Anon-Receipt", sha256)
+	if opts.receiptSHA != "" {
+		// Receipt hash proves a fresh /anonymize ran first (ordering gate).
+		req.Header.Set("X-Anon-Receipt", opts.receiptSHA)
+	}
+	if opts.source != "" {
+		// Source assertion: imagery pre-blurred upstream; bypasses receipt gate.
+		req.Header.Set("X-Image-Source", opts.source)
+	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
