@@ -12,8 +12,9 @@ import (
 	"github.com/masterfabric-go/masterfabric/internal/shared/response"
 )
 
-// maxUploadBytes caps photo uploads (Roboflow ingest limit is 5 MB; we accept a
-// little headroom and resize downstream if needed).
+// maxUploadBytes caps photo uploads. The sidecar anonymizes in-memory and the
+// blurred PNG is base64-sent to Claude, so we keep a sane ceiling well within
+// the vision API's per-image limits.
 const maxUploadBytes = 8 << 20 // 8 MB
 
 // Handler exposes street + photo scoring and submission endpoints.

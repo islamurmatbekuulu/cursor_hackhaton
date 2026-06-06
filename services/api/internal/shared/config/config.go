@@ -20,7 +20,8 @@ type Config struct {
 }
 
 // WalkabilityConfig holds settings for the Kaldırım Skoru bounded context:
-// Google Maps Platform access, the CV sidecar, and the scoring config file.
+// Google Maps Platform access, the CV sidecar, the scoring config file, and the
+// Claude (Anthropic) vision scorer that grades anonymized photos.
 type WalkabilityConfig struct {
 	GoogleMapsAPIKey        string
 	GoogleMapsSigningSecret string // optional; URL signing applied only if set
@@ -28,12 +29,26 @@ type WalkabilityConfig struct {
 	SidecarToken            string
 	ScoringConfigPath       string
 	MaxPoints               int
+	// ClaudeAPIKey is the Anthropic key used to score blurred photos. SERVER-SIDE
+	// secret: read from env at startup, never logged, never sent to clients.
+	ClaudeAPIKey string
+	// ClaudeModel optionally overrides the default vision model id.
+	ClaudeModel string
+	// ClaudeBaseURL optionally overrides the Anthropic API base (testing).
+	ClaudeBaseURL string
 }
 
 // Enabled reports whether street/photo scoring can run (requires a Maps key and
 // a sidecar URL). When false, the endpoints return a clear "not configured" error.
 func (w WalkabilityConfig) Enabled() bool {
 	return w.GoogleMapsAPIKey != "" && w.SidecarURL != ""
+}
+
+// PhotoScoringReady reports whether the mobile photo path can run end-to-end: it
+// additionally requires the Claude API key (the scorer). Used for fail-fast at
+// startup so the demo never silently serves un-scored responses.
+func (w WalkabilityConfig) PhotoScoringReady() bool {
+	return w.Enabled() && w.ClaudeAPIKey != ""
 }
 
 // ServerConfig holds HTTP server settings.
@@ -150,6 +165,9 @@ func Load() *Config {
 			SidecarToken:            os.Getenv("INTERNAL_SIDECAR_TOKEN"),
 			ScoringConfigPath:       envOrDefault("SCORING_CONFIG_PATH", "scoring.config.json"),
 			MaxPoints:               envOrDefaultInt("WALKABILITY_MAX_POINTS", 20),
+			ClaudeAPIKey:            os.Getenv("CLAUDE_API_KEY"),
+			ClaudeModel:             os.Getenv("CLAUDE_MODEL"),
+			ClaudeBaseURL:           os.Getenv("CLAUDE_BASE_URL"),
 		},
 	}
 }

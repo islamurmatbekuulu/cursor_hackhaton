@@ -17,6 +17,8 @@ type SubmissionDTO struct {
 	Grade          model.Grade   `json:"grade"`
 	PollutionRaw   float64       `json:"pollution_raw"`
 	Counts         []model.ClassCount `json:"counts"`
+	// Report is the LLM scorer's short Turkish assessment (no identifying content).
+	Report         string        `json:"report,omitempty"`
 	Source         string        `json:"source"`
 }
 

@@ -21,6 +21,7 @@ import (
 	tenantHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/tenant"
 	walkabilityHandler "github.com/masterfabric-go/masterfabric/internal/infrastructure/http/handler/walkability"
 	"github.com/masterfabric-go/masterfabric/internal/infrastructure/http/router"
+	"github.com/masterfabric-go/masterfabric/internal/infrastructure/llm/claude"
 	"github.com/masterfabric-go/masterfabric/internal/infrastructure/scoring"
 	"github.com/masterfabric-go/masterfabric/internal/infrastructure/sidecar"
 	"github.com/masterfabric-go/masterfabric/internal/infrastructure/streetview"
@@ -62,6 +63,13 @@ func main() {
 func run() error {
 	// Load configuration
 	cfg := config.Load()
+
+	// Fail fast: if scoring is configured (Maps + sidecar) the photo path also
+	// REQUIRES the Claude key — refuse to start half-configured so the demo never
+	// silently serves un-scored responses. The key is never logged.
+	if cfg.Walkability.Enabled() && cfg.Walkability.ClaudeAPIKey == "" {
+		return fmt.Errorf("CLAUDE_API_KEY is required for photo scoring but is not set")
+	}
 
 	// Initialize logger
 	log := logger.New(cfg.Log.Level, cfg.Log.Format)
@@ -217,18 +225,31 @@ func buildDependencies(
 			BaseURL: cfg.Walkability.SidecarURL,
 			Token:   cfg.Walkability.SidecarToken,
 		}, log)
+		// Claude vision scorer replaces the Roboflow detector on the photo path.
+		// It receives ONLY the blurred PNG (anonymize runs first). Key never logged.
+		claudeScorer := claude.New(claude.Config{
+			APIKey:  cfg.Walkability.ClaudeAPIKey,
+			Model:   cfg.Walkability.ClaudeModel,
+			BaseURL: cfg.Walkability.ClaudeBaseURL,
+		}, log)
 		var submissionRepo walkabilityRepo.SubmissionRepository
 		if db != nil {
 			submissionRepo = pgWalkability.NewSubmissionRepo(db)
 		}
 		scoreStreetUC := walkabilityUC.NewScoreStreetUseCase(svClient, detector, scoringCfg, log, cfg.Walkability.MaxPoints)
-		scorePhotoUC := walkabilityUC.NewScorePhotoUseCase(detector, svClient, submissionRepo, scoringCfg, log)
+		// detector (sidecar) implements Anonymizer; claudeScorer implements Scorer.
+		scorePhotoUC := walkabilityUC.NewScorePhotoUseCase(detector, claudeScorer, svClient, submissionRepo, scoringCfg, log)
 		listSubmissionsUC := walkabilityUC.NewListSubmissionsUseCase(submissionRepo, scoringCfg, log)
 		getSubmissionImageUC := walkabilityUC.NewGetSubmissionImageUseCase(submissionRepo)
 		deps.WalkabilityHandler = walkabilityHandler.NewHandler(
 			scoreStreetUC, scorePhotoUC, listSubmissionsUC, getSubmissionImageUC,
 		)
-		log.Info("walkability scoring enabled", "sidecar", cfg.Walkability.SidecarURL, "max_points", cfg.Walkability.MaxPoints)
+		log.Info("walkability scoring enabled",
+			"sidecar", cfg.Walkability.SidecarURL,
+			"max_points", cfg.Walkability.MaxPoints,
+			"photo_scorer", "claude",
+			"claude_model", claudeScorer.Model(),
+		)
 	} else {
 		log.Warn("walkability scoring disabled: set GOOGLE_MAPS_API_KEY and SIDECAR_URL to enable")
 	}

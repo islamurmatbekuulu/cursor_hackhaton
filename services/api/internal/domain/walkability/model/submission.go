@@ -25,6 +25,9 @@ type Submission struct {
 	Grade            Grade
 	PollutionRaw     float64
 	Counts           []ClassCount
+	// Report is the LLM vision scorer's short Turkish assessment (no identifying
+	// content). Persisted so the municipality console can show what the phone saw.
+	Report           string
 	Source           string
 	ImageBlurred     []byte
 	ImageContentType string

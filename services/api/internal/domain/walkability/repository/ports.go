@@ -76,3 +76,60 @@ type Detector interface {
 	// applicable); ImageSHA256 is still computed for auditability.
 	DetectPreBlurred(ctx context.Context, image []byte, mimeType string) (*DetectionResult, error)
 }
+
+// AnonymizeResult is the blurred PNG plus the KVKK anonymization receipt for a
+// single user-uploaded image.
+//
+// BlurredPNG is the ONLY representation of the image that may leave the
+// anonymize boundary: raw upload bytes are discarded before this is returned.
+// FaceCount/PlateCount/ImageSHA256 form the receipt that callers MUST log
+// before sending BlurredPNG to any downstream processor (e.g. the LLM scorer).
+type AnonymizeResult struct {
+	BlurredPNG  []byte
+	FaceCount   int
+	PlateCount  int
+	ImageSHA256 string
+}
+
+// Anonymizer blurs faces + license plates in-memory and returns the blurred PNG
+// plus the anonymization receipt. It performs NO urban-object detection and NO
+// identification of any kind. This is the mandatory FIRST step for user-uploaded
+// photos (KVKK Art. 5/6): only the returned BlurredPNG may be forwarded onward.
+type Anonymizer interface {
+	Anonymize(ctx context.Context, image []byte, mimeType string) (*AnonymizeResult, error)
+}
+
+// ScoredCategory is one visual-pollution category the Scorer observed in an
+// image. Class is a canonical allowlist key (see model.AllowedClasses); Severity
+// is a 0..1 magnitude. It carries NO bounding boxes and NO identifying content.
+type ScoredCategory struct {
+	Class    string
+	Severity float64
+}
+
+// ImageScore is the visual-pollution assessment of a single ANONYMIZED image,
+// produced by an LLM vision model (Claude) rather than an object detector.
+//
+// KVKK: it contains ONLY a walkability score, an A–F grade, allowlisted
+// pollution categories, and a Turkish report. It MUST NOT carry any
+// person/vehicle/face/plate identifier; the Scorer discards any such content.
+type ImageScore struct {
+	Score      float64
+	Grade      model.Grade
+	Categories []ScoredCategory
+	ReportTR   string
+}
+
+// Scorer assesses sidewalk / urban visual-pollution conditions on an image that
+// has ALREADY been anonymized (faces + plates blurred).
+//
+// KVKK contract for implementations:
+//   - The input MUST be the blurred PNG only; raw uploads are never passed here.
+//   - The model is instructed to assess ONLY visual-pollution conditions and to
+//     NOT identify people, read plates/identifying text, or perform face/plate
+//     OCR or person/vehicle tracking.
+//   - Implementations keep ONLY score/grade/categories/report and discard any
+//     identifying content the model might return. See KVKK_COMPLIANCE.md §5.4.
+type Scorer interface {
+	ScoreImage(ctx context.Context, blurredPNG []byte) (*ImageScore, error)
+}

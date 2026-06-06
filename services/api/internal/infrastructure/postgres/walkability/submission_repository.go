@@ -52,10 +52,10 @@ func (r *SubmissionRepo) Create(ctx context.Context, s *model.Submission) error 
 	_, err = r.db.Exec(ctx,
 		`INSERT INTO submissions (
 			id, submitted_on, lat, lng, accuracy_m, street_label, street_label_key,
-			score, grade, pollution_raw, counts, source, image_blurred, image_content_type, created_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+			score, grade, pollution_raw, counts, report, source, image_blurred, image_content_type, created_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
 		s.ID, s.SubmittedOn, s.Lat, s.Lng, s.AccuracyM, s.StreetLabel, s.StreetLabelKey,
-		s.Score, string(s.Grade), s.PollutionRaw, countsJSON, s.Source, s.ImageBlurred, s.ImageContentType, s.CreatedAt,
+		s.Score, string(s.Grade), s.PollutionRaw, countsJSON, s.Report, s.Source, s.ImageBlurred, s.ImageContentType, s.CreatedAt,
 	)
 	if err != nil {
 		return domainErr.New(domainErr.ErrInternal, "failed to create submission", err)
@@ -66,7 +66,7 @@ func (r *SubmissionRepo) Create(ctx context.Context, s *model.Submission) error 
 func (r *SubmissionRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.Submission, error) {
 	row := r.db.QueryRow(ctx,
 		`SELECT id, submitted_on, lat, lng, accuracy_m, street_label, street_label_key,
-		        score, grade, pollution_raw, counts, source, image_blurred, image_content_type, created_at
+		        score, grade, pollution_raw, counts, report, source, image_blurred, image_content_type, created_at
 		 FROM submissions WHERE id=$1`, id,
 	)
 	s, err := scanSubmission(row)
@@ -85,7 +85,7 @@ func (r *SubmissionRepo) ListByBBox(ctx context.Context, north, south, east, wes
 	}
 	rows, err := r.db.Query(ctx,
 		`SELECT id, submitted_on, lat, lng, accuracy_m, street_label, street_label_key,
-		        score, grade, pollution_raw, counts, source, image_blurred, image_content_type, created_at
+		        score, grade, pollution_raw, counts, report, source, image_blurred, image_content_type, created_at
 		 FROM submissions
 		 WHERE lat BETWEEN $1 AND $2 AND lng BETWEEN $3 AND $4
 		 ORDER BY created_at DESC
@@ -149,7 +149,7 @@ func scanSubmission(row scannable) (*model.Submission, error) {
 	var submittedOn time.Time
 	if err := row.Scan(
 		&s.ID, &submittedOn, &s.Lat, &s.Lng, &s.AccuracyM, &s.StreetLabel, &s.StreetLabelKey,
-		&s.Score, &grade, &s.PollutionRaw, &countsJSON, &s.Source, &s.ImageBlurred, &s.ImageContentType, &s.CreatedAt,
+		&s.Score, &grade, &s.PollutionRaw, &countsJSON, &s.Report, &s.Source, &s.ImageBlurred, &s.ImageContentType, &s.CreatedAt,
 	); err != nil {
 		return nil, err
 	}

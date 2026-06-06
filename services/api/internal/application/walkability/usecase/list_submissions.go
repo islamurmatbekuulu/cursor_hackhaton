@@ -73,6 +73,7 @@ func toSubmissionDTO(s *model.Submission) dto.SubmissionDTO {
 		Grade:          s.Grade,
 		PollutionRaw:   s.PollutionRaw,
 		Counts:         s.Counts,
+		Report:         s.Report,
 		Source:         s.Source,
 	}
 }

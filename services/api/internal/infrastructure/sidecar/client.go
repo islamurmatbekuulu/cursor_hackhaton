@@ -62,6 +62,34 @@ func New(cfg Config, log *slog.Logger) *Client {
 }
 
 var _ repository.Detector = (*Client)(nil)
+var _ repository.Anonymizer = (*Client)(nil)
+
+// Anonymize blurs faces/plates on a user-uploaded photo and returns the blurred
+// PNG plus the KVKK receipt. It does NOT run any urban-object detector — it is
+// the mandatory first step for the LLM (Claude) scoring path, which assesses the
+// returned blurred bytes only. The receipt {face_count, plate_count,
+// image_sha256} is logged here, before the bytes are handed to any scorer.
+func (c *Client) Anonymize(ctx context.Context, image []byte, mimeType string) (*repository.AnonymizeResult, error) {
+	blurred, receipt, err := c.anonymize(ctx, image, mimeType)
+	if err != nil {
+		return nil, fmt.Errorf("anonymize: %w", err)
+	}
+
+	// KVKK receipt log — emitted BEFORE the blurred bytes leave for the scorer;
+	// never logs raw bytes or any identity.
+	c.log.Info("anonymization receipt",
+		"face_count", receipt.FaceCount,
+		"plate_count", receipt.PlateCount,
+		"image_sha256", receipt.ImageSHA256,
+	)
+
+	return &repository.AnonymizeResult{
+		BlurredPNG:  blurred,
+		FaceCount:   receipt.FaceCount,
+		PlateCount:  receipt.PlateCount,
+		ImageSHA256: receipt.ImageSHA256,
+	}, nil
+}
 
 // AnonymizeAndDetect blurs faces/plates then detects urban objects. Used for
 // user-uploaded photos, which are NOT pre-anonymized: the /anonymize step and

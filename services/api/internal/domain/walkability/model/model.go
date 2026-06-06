@@ -95,15 +95,29 @@ type ClassCount struct {
 
 // StreetScore is the full aggregated result returned to clients.
 type StreetScore struct {
-	Query         string       `json:"query"`
-	Score         float64      `json:"score"`
-	Grade         Grade        `json:"grade"`
-	PollutionRaw  float64      `json:"pollution_raw"`
-	PointsSampled int          `json:"points_sampled"`
-	Counts        []ClassCount `json:"counts"`
+	Query         string        `json:"query"`
+	Score         float64       `json:"score"`
+	Grade         Grade         `json:"grade"`
+	PollutionRaw  float64       `json:"pollution_raw"`
+	PointsSampled int           `json:"points_sampled"`
+	Counts        []ClassCount  `json:"counts"`
 	Points        []PointResult `json:"points"`
-	PanoramaDates []string     `json:"panorama_dates,omitempty"`
-	Limitations   []string     `json:"limitations,omitempty"`
+	PanoramaDates []string      `json:"panorama_dates,omitempty"`
+	Limitations   []string      `json:"limitations,omitempty"`
+	// Report is a short human-readable Turkish assessment of the sidewalk
+	// condition (photo path: produced by the LLM vision scorer). Empty for the
+	// legacy Street View path. Contains no identifying content (KVKK).
+	Report string `json:"report,omitempty"`
+}
+
+// ValidGrade reports whether g is one of the canonical A–F letter grades.
+func ValidGrade(g Grade) bool {
+	switch g {
+	case GradeA, GradeB, GradeC, GradeD, GradeE, GradeF:
+		return true
+	default:
+		return false
+	}
 }
 
 // ClassWeight is the weight and saturation cap for one class (PLAYBOOK §4.3).

@@ -99,6 +99,12 @@ export const ScoreResponse = z.object({
   points: z.array(PointResult),
   panorama_dates: z.array(z.string()).optional(),
   limitations: z.array(z.string()).optional(),
+  /**
+   * Short human-readable Turkish assessment of the sidewalk condition. On the
+   * photo path this is produced by the Claude vision scorer (visual-pollution
+   * only; no identifying content — KVKK). Absent on the legacy Street View path.
+   */
+  report: z.string().optional(),
 });
 export type ScoreResponse = z.infer<typeof ScoreResponse>;
 
@@ -134,6 +140,8 @@ export const Submission = z.object({
   grade: Grade,
   pollution_raw: z.number(),
   counts: z.array(ClassCount),
+  /** Short Turkish visual-pollution assessment (Claude vision scorer; no PII). */
+  report: z.string().optional(),
   source: z.literal("camera"),
 });
 export type Submission = z.infer<typeof Submission>;
