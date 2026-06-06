@@ -21,7 +21,7 @@ function pinSvg(color: string, label?: string, size = 28): string {
     ? `<text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="700" font-family="system-ui,sans-serif">${label}</text>`
     : "";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${h}" viewBox="0 0 24 32">
-    <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill="${color}"/>
+    <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill="${color}" stroke="white" stroke-width="1.5"/>
     ${text}
   </svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
@@ -57,22 +57,34 @@ function FitBounds({ submissions }: { submissions: Submission[] }) {
 
 function Legend() {
   const { t } = useTranslation();
-  const grades: Grade[] = ["A", "B", "C", "D", "E", "F"];
+  const grades: Array<{ grade: Grade; range: string }> = [
+    { grade: "A", range: "90+" },
+    { grade: "B", range: "80-89" },
+    { grade: "C", range: "70-79" },
+    { grade: "D", range: "60-69" },
+    { grade: "E", range: "50-59" },
+    { grade: "F", range: "<50" },
+  ];
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[220px] rounded-lg bg-white/95 px-3 py-2 text-xs shadow">
-      <div className="mb-1.5 font-medium text-slate-700">{t("map.legendGrades")}</div>
-      <div className="flex flex-wrap gap-1.5">
-        {grades.map((g) => (
+    <div className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[260px] rounded-2xl border border-slate-200 bg-white/95 px-3 py-3 text-xs shadow-diffuse backdrop-blur">
+      <div className="mb-2 font-semibold text-slate-800">{t("map.legendGrades")}</div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {grades.map(({ grade, range }) => (
           <span
-            key={g}
-            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
-            style={{ backgroundColor: GRADE_COLORS[g] }}
+            key={grade}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700"
           >
-            {g}
+            <span
+              className="h-3 w-3 rounded-full"
+              style={{ backgroundColor: GRADE_COLORS[grade] }}
+              aria-hidden
+            />
+            {t("map.gradePrefix")} {grade} · {range}
           </span>
         ))}
       </div>
       <p className="mt-1.5 text-[10px] text-slate-500">{t("map.aggregateHint")}</p>
+      <p className="mt-1 text-[10px] text-slate-500">{t("map.selectedHint")}</p>
     </div>
   );
 }
@@ -80,11 +92,25 @@ function Legend() {
 function MapFallback({ variant }: { variant: "missing-key" | "auth" }) {
   const { t } = useTranslation();
   return (
-    <div className="flex h-full min-h-[360px] flex-col items-center justify-center gap-3 rounded-xl2 border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-      <p className="text-sm font-medium text-slate-700">{t("map.unavailable")}</p>
-      <p className="max-w-[42ch] text-xs text-slate-500">
+    <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-3 rounded-xl2 border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+      <svg viewBox="0 0 48 48" className="h-12 w-12 text-slate-400" aria-hidden>
+        <path d="M14 8 6 12v28l8-4 10 4 10-4 8 4V12l-8-4-10 4-10-4Z" fill="currentColor" opacity="0.16" />
+        <path d="M14 8v28M24 12v28M34 8v28" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+      <p className="text-sm font-semibold text-slate-800">{t("map.unavailable")}</p>
+      <p className="max-w-[42ch] text-sm leading-6 text-slate-500">
         {variant === "auth" ? t("map.unavailableAuth") : t("map.unavailableKey")}
       </p>
+    </div>
+  );
+}
+
+function EmptyMapOverlay() {
+  const { t } = useTranslation();
+  return (
+    <div className="pointer-events-none absolute inset-x-4 top-4 z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-diffuse backdrop-blur">
+      <p className="text-sm font-semibold text-slate-800">{t("map.emptyTitle")}</p>
+      <p className="mt-1 text-sm leading-6 text-slate-500">{t("map.emptyBody")}</p>
     </div>
   );
 }
@@ -101,6 +127,7 @@ function GoogleSubmissionMap({
   showAggregates: boolean;
 }) {
   const status = useApiLoadingStatus();
+  const { t } = useTranslation();
   const aggregates = useMemo(() => computeStreetAggregates(submissions), [submissions]);
   const failed =
     status === APILoadingStatus.AUTH_FAILURE || status === APILoadingStatus.FAILED;
@@ -108,11 +135,11 @@ function GoogleSubmissionMap({
   if (failed) return <MapFallback variant="auth" />;
 
   return (
-    <div className="relative h-full min-h-[360px] overflow-hidden rounded-xl2 border border-slate-200 shadow-diffuse">
+    <div className="relative h-full min-h-[260px] overflow-hidden rounded-xl2 border border-slate-200 shadow-diffuse">
       <Map
         defaultCenter={ISTANBUL}
         defaultZoom={12}
-        gestureHandling="greedy"
+        gestureHandling="cooperative"
         clickableIcons={false}
         className="h-full w-full"
       >
@@ -124,13 +151,13 @@ function GoogleSubmissionMap({
             <Marker
               key={s.id}
               position={{ lat: s.lat, lng: s.lng }}
-              title={s.street}
+              title={`${s.street} - ${t("map.gradePrefix")} ${s.grade}, skor ${s.score.toFixed(1)}`}
               onClick={() => onSelect(s.id)}
               zIndex={selected ? 100 : 10}
               icon={{
-                url: pinSvg(color, undefined, selected ? 34 : 26),
-                scaledSize: new google.maps.Size(selected ? 34 : 26, selected ? 45 : 35),
-                anchor: new google.maps.Point(selected ? 17 : 13, selected ? 45 : 35),
+                url: pinSvg(color, s.grade, selected ? 34 : 28),
+                scaledSize: new google.maps.Size(selected ? 34 : 28, selected ? 45 : 37),
+                anchor: new google.maps.Point(selected ? 17 : 14, selected ? 45 : 37),
               }}
             />
           );
@@ -140,7 +167,7 @@ function GoogleSubmissionMap({
             <Marker
               key={`agg-${a.street}`}
               position={{ lat: a.lat, lng: a.lng }}
-              title={`${a.street} (${a.avgScore.toFixed(1)})`}
+              title={`${a.street} - ${t("map.gradePrefix")} ${a.grade}, ortalama ${a.avgScore.toFixed(1)}`}
               zIndex={5}
               icon={{
                 url: circleSvg(GRADE_COLORS[a.grade], String(Math.round(a.avgScore))),
@@ -150,6 +177,7 @@ function GoogleSubmissionMap({
             />
           ))}
       </Map>
+      {submissions.length === 0 && <EmptyMapOverlay />}
       <Legend />
     </div>
   );

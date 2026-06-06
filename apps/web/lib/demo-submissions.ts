@@ -31,7 +31,7 @@ export const DEMO_STREETS = [
 
 const LIMITATIONS = [
   "Tek fotoğraf üzerinden hesaplanan skor; sokak genelini temsil etmeyebilir.",
-  "Vatandaş fotoğrafı analiz öncesi yüz ve plaka için bulanıklaştırılmıştır; ham görüntü saklanmaz.",
+  "Vatandaş fotoğrafı analiz öncesi yüz ve plaka için bulanıklaştırılmıştır; ham görüntü asla saklanmaz.",
   "Gündüz çekimi; aydınlatma koşulları tespit güvenini etkileyebilir.",
 ];
 

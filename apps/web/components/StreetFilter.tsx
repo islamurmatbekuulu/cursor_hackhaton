@@ -101,7 +101,7 @@ export function StreetFilter({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <div>
         <label htmlFor="street-filter" className="text-sm font-medium text-slate-700">
           {t("filter.label")}
@@ -111,7 +111,8 @@ export function StreetFilter({
             id="street-filter"
             value={selectedStreet ?? ""}
             onChange={handleDropdownChange}
-            className="mt-1.5 min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+            aria-describedby="street-filter-help"
+            className="mt-2 min-h-[48px] w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition hover:border-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/30"
           >
             <option value="">{t("filter.allStreets")}</option>
             {DEMO_STREETS.map((s) => (
@@ -121,7 +122,7 @@ export function StreetFilter({
             ))}
           </select>
         ) : (
-          <div className="mt-1.5 flex gap-2">
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
               id="street-filter"
               ref={inputRef}
@@ -132,26 +133,27 @@ export function StreetFilter({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder={t("filter.placeholder")}
-              className="min-h-[44px] flex-1 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+              aria-describedby="street-filter-help"
+              className="min-h-[48px] min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition hover:border-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/30"
             />
             {selectedStreet && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="min-h-[44px] rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                className="min-h-[48px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]"
               >
                 {t("filter.clear")}
               </button>
             )}
           </div>
         )}
-        <p className="mt-1.5 text-xs text-slate-500">
+        <p id="street-filter-help" className="mt-2 text-xs leading-5 text-slate-500">
           {useDropdown ? t("filter.hintDropdown") : t("filter.hintPlaces")}
         </p>
       </div>
 
       {selectedStreet && (
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 text-center">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 text-center">
           <Stat label={t("filter.streetAverage")} value={streetAverage != null ? streetAverage.toFixed(1) : "—"} />
           <Stat label={t("filter.reportCount")} value={String(reportCount)} />
         </div>
@@ -162,9 +164,9 @@ export function StreetFilter({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white px-3 py-3">
-      <div className="tnum text-xl font-semibold text-slate-900">{value}</div>
-      <div className="mt-0.5 text-[11px] uppercase tracking-wide text-slate-400">{label}</div>
+    <div className="bg-white px-3 py-4">
+      <div className="tnum text-2xl font-bold tracking-tight text-slate-950">{value}</div>
+      <div className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
     </div>
   );
 }

@@ -1,69 +1,132 @@
-import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
-
-// Turkish-first municipality console copy. No hardcoded strings in components — everything via t().
-export const tr = {
-  translation: {
-    app: {
-      title: "Kaldırım Skoru — Belediye Konsolu",
-      badge: "Belediye Konsolu",
-      tagline: "Vatandaşların mobil uygulamadan gönderdiği kaldırım fotoğraflarını inceleyin ve sokak bazında skorları takip edin.",
-    },
-    console: {
-      reportsHeading: "Vatandaş Bildirimleri",
-      demoBadge: "Demo modu: örnek İstanbul bildirimleri gösteriliyor. Canlı API için NEXT_PUBLIC_USE_DEMO_DATA=false ayarlayın.",
-    },
-    filter: {
-      label: "Sokak veya cadde",
-      placeholder: "örn. İstiklal Caddesi, Beyoğlu",
-      allStreets: "Tüm sokaklar",
-      clear: "Temizle",
-      streetAverage: "Sokak ortalama skoru",
-      reportCount: "Bildirim sayısı",
-      hintPlaces: "Google Places önerilerinden bir sokak seçin veya ad yazıp Enter'a basın.",
-      hintDropdown: "Places kullanılamıyor — demo sokak listesinden seçin.",
-    },
-    list: {
-      heading: "Bildirim listesi",
-      emptyTitle: "Bu sokak için bildirim yok",
-      emptyBody: "Farklı bir sokak seçin veya filtreyi temizleyin.",
-    },
-    detail: {
-      title: "Bildirim Detayı",
-      close: "Kapat",
-      score: "Skor",
-      pollution: "Kirlilik (ham)",
-      date: "Gönderim tarihi",
-      coords: "Koordinatlar",
-      classes: "Kirlilik dağılımı",
-      noDetections: "Bu bildirimde tespit bulunamadı.",
-      limitations: "Sınırlamalar",
-      photoAlt: "Bulanıklaştırılmış vatandaş fotoğrafı",
-      photoBadge: "Bulanıklaştırılmış",
-      photoCaption: "Vatandaş fotoğrafı — analiz öncesi anonimleştirilmiş kopya",
-    },
-    map: {
-      legendGrades: "Not renkleri",
-      aggregateHint: "Büyük daireler: sokak ortalama skoru (tüm sokaklar görünümünde).",
-      unavailable: "Harita yüklenemedi",
-      unavailableKey:
-        "Google Maps tarayıcı anahtarı tanımlı değil. Bildirim listesi yine de çalışır; harita için anahtar ekleyin.",
-      unavailableAuth:
-        "Google Maps anahtarı reddedildi. Anahtarın Maps JavaScript API + Places API için yetkili ve alan adının (referrer) izinli olduğundan emin olun.",
-    },
-    kvkk: {
-      note: "Vatandaş fotoğrafları analizden önce yüz ve plaka için bulanıklaştırılır; belediye incelemesi için yalnızca bulanık kopya saklanır, ham görüntü asla depolanmaz. Street View kullanılmaz.",
-    },
-  },
-};
-
-if (!i18n.isInitialized) {
-  void i18n.use(initReactI18next).init({
-    resources: { tr },
-    lng: "tr",
-    fallbackLng: "tr",
-    interpolation: { escapeValue: false },
-  });
-}
-
-export default i18n;
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+
+// Turkish-first municipality console copy. No hardcoded strings in components — everything via t().
+export const tr = {
+  translation: {
+    app: {
+      title: "Kaldırım Skoru — Belediye Konsolu",
+      badge: "Belediye Konsolu",
+      tagline: "Mobil uygulamadan gelen kaldırım bildirimlerini, bulanıklaştırılmış fotoğraf kanıtı ve sokak bazlı skorlarla inceleyin.",
+      eyebrow: "İstanbul kaldırım bildirimleri",
+      updated: "Operasyon görünümü",
+      skip: "Ana içeriğe geç",
+    },
+    console: {
+      reportsHeading: "Vatandaş Bildirimleri",
+      workbench: "İnceleme çalışma alanı",
+      workbenchBody: "Sokak filtresi, bildirim listesi ve harita aynı veri kümesini kullanır. Bir bildirim seçildiğinde detay paneli açılır.",
+      demoTitle: "Demo veri modu",
+      demoBadge: "Örnek İstanbul bildirimleri gösteriliyor. Canlı API için NEXT_PUBLIC_USE_DEMO_DATA=false ayarlayın.",
+      liveTitle: "Canlı API modu",
+      liveBadge: "Bildirimler belediye API proxy üzerinden yükleniyor. Bağlantı kesilirse liste yerine hata durumu gösterilir.",
+      loadingTitle: "Bildirimler yükleniyor",
+      loadingBody: "Sokak filtresine göre belediye inceleme listesi hazırlanıyor.",
+      errorTitle: "Bildirimler alınamadı",
+      retry: "Tekrar dene",
+      selectedStreet: "Seçili sokak",
+    },
+    summary: {
+      avgScore: "Ortalama skor",
+      totalReports: "Toplam bildirim",
+      priorityReports: "Öncelikli bildirim",
+      streetCount: "Sokak sayısı",
+      citywide: "Tüm görünüm",
+      filtered: "Filtreli görünüm",
+      priorityHint: "E, F veya 60 altı skor",
+    },
+    filter: {
+      label: "Sokak veya cadde",
+      placeholder: "örn. İstiklal Caddesi, Beyoğlu",
+      allStreets: "Tüm sokaklar",
+      clear: "Temizle",
+      streetAverage: "Sokak ortalama skoru",
+      reportCount: "Bildirim sayısı",
+      hintPlaces: "Google Places önerilerinden bir sokak seçin veya ad yazıp Enter'a basın.",
+      hintDropdown: "Places kullanılamıyor — demo sokak listesinden seçin.",
+    },
+    list: {
+      heading: "Bildirim listesi",
+      description: "En güncel vatandaş fotoğraf bildirimleri",
+      emptyTitle: "Bu sokak için bildirim yok",
+      emptyBody: "Farklı bir sokak seçin veya filtreyi temizleyin.",
+      scoreLabel: "Skor",
+      gradeLabel: "Not",
+      openDetail: "Bildirim detayını aç",
+      detections: "tespit",
+      latestBadge: "Yeni",
+      latestKicker: "Telefondan gelen son bildirim",
+      datePending: "Gönderim zamanı bekleniyor",
+    },
+    detail: {
+      title: "Bildirim Detayı",
+      close: "Kapat",
+      score: "Skor",
+      pollution: "Kirlilik (ham)",
+      date: "Gönderim tarihi",
+      coords: "Koordinatlar",
+      classes: "Kirlilik dağılımı",
+      noDetections: "Bu bildirimde tespit bulunamadı.",
+      limitations: "Sınırlamalar",
+      photoAlt: "Bulanıklaştırılmış vatandaş fotoğrafı",
+      photoBadge: "Bulanıklaştırılmış",
+      photoCaption: "Bulanıklaştırılmış fotoğraf — ham görüntü belediye konsolunda asla saklanmaz",
+      reviewStatus: "İnceleme kaydı",
+      anonymizedOnly: "Yalnızca anonimleştirilmiş kopya",
+      gradeSentence: "Not {{grade}}, skor {{score}}",
+      confidence: "Ortalama güven",
+      contribution: "Katkı",
+    },
+    map: {
+      heading: "Harita görünümü",
+      gradePrefix: "Not",
+      legendGrades: "Not renkleri",
+      aggregateHint: "Büyük daireler: sokak ortalama skoru (tüm sokaklar görünümünde).",
+      selectedHint: "Pin içindeki harf notu, sayı ise sokak ortalamasını gösterir.",
+      emptyTitle: "Haritada gösterilecek bildirim yok",
+      emptyBody: "Filtreyi değiştirerek farklı sokak bildirimlerini görüntüleyin.",
+      unavailable: "Harita yüklenemedi",
+      unavailableKey:
+        "Google Maps tarayıcı anahtarı tanımlı değil. Bildirim listesi yine de çalışır; harita için anahtar ekleyin.",
+      unavailableAuth:
+        "Google Maps anahtarı reddedildi. Anahtarın Maps JavaScript API + Places API için yetkili ve alan adının (referrer) izinli olduğundan emin olun.",
+    },
+    kvkk: {
+      note: "Bulanıklaştırılmış fotoğraf belediye incelemesi için gösterilir; ham görüntü asla depolanmaz. Yüz ve plaka bulanıklaştırma analizden önce uygulanır.",
+    },
+    assistant: {
+      title: "Veri Asistanı",
+      subtitle: "Bildirimlerle ilgili doğal dilde soru sorun",
+      open: "Veri Asistanı'nı aç",
+      close: "Asistanı kapat",
+      clear: "Sohbeti temizle",
+      youLabel: "Siz",
+      assistantLabel: "Asistan",
+      placeholder: "Verilerle ilgili soru sorun...",
+      send: "Gönder",
+      sending: "Yanıtlanıyor",
+      inputLabel: "Veri asistanına sorunuz",
+      introTitle: "Belediye verilerinize sorun",
+      introBody: "Sokak bazlı skorlar, kirlilik türleri ve bildirim tarihleri hakkında soru sorun. Yanıtlar yalnızca konsoldaki anonim bildirim verisine dayanır.",
+      suggestionsLabel: "Örnek sorular",
+      suggestion1: "Hangi sokak en kirli?",
+      suggestion2: "Bu hafta kaç bildirim geldi?",
+      suggestion3: "İstiklal Caddesi'nin durumu nedir?",
+      suggestion4: "En çok hangi kirlilik türü görülüyor?",
+      errorGeneric: "Yanıt alınamadı. Lütfen tekrar deneyin.",
+      retry: "Tekrar dene",
+      kvkkNote: "Asistan yalnızca anonim, türetilmiş verilere (sokak, ilçe, skor, not, kategori, tarih) erişir; fotoğraf veya kişisel veri paylaşılmaz.",
+    },
+  },
+};
+
+if (!i18n.isInitialized) {
+  void i18n.use(initReactI18next).init({
+    resources: { tr },
+    lng: "tr",
+    fallbackLng: "tr",
+    interpolation: { escapeValue: false },
+  });
+}
+
+export default i18n;

@@ -6,6 +6,7 @@
   --bg: #f8fafc;
   --surface: #ffffff;
   --ink: #0f172a;
+  --accent: #0d9488;
 }
 
 html,
@@ -14,6 +15,30 @@ body {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+}
+
+button,
+input,
+select {
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 3px solid rgb(13 148 136 / 0.36);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: rgb(204 251 241 / 0.9);
+  color: #0f172a;
 }
 
 /* Google Places Autocomplete dropdown — keep it above app chrome and on-brand. */
