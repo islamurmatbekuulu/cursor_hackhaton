@@ -1,0 +1,13 @@
+# Kaldırım Skoru CV sidecar (FastAPI + Ultralytics)
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-multipart==0.0.20
+httpx==0.28.1
+numpy==2.2.1
+# opencv-python-headless for in-memory image ops (no GUI deps in the container)
+opencv-python-headless==4.11.0.86
+# Ultralytics powers the anonymizer (Panoramax YOLO11l) + gap-fill detectors.
+# Torch is pulled in transitively; pin ultralytics and let it resolve torch.
+ultralytics==8.3.59
